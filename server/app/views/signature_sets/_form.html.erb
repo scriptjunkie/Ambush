@@ -1,0 +1,31 @@
+<div class="content">
+<%= form_tag(@signature_set, :method => :put) do %>
+
+  <% if @signature_set.errors.any? %>
+    <div id="error_explanation">
+      <h2><%= pluralize(@signature_set.errors.count, "error") %> prohibited this signature_set from being saved:</h2>
+
+      <ul>
+      <% @signature_set.errors.full_messages.each do |msg| %>
+        <li><%= msg %></li>
+      <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+<table class="sortable" style="width: 100%;">
+	<div class="caption">Signature set <%= @signature_set.id %> - details</div>
+	<thead><tr><th scope="col">Field</th><th scope="col">Value</th></tr></thead>
+	<tbody>
+		<tr><td>Report server</td><td><%= text_field :signature_set, :report %></td></tr>
+		<tr><td>Version</td><td><%= text_field :signature_set, :version %></td></tr>
+		<tr><td>ADM file</td><td><a onclick="getAdm(<%= @signature_set.id %>)">Download</a></td></tr>
+	</tbody>
+	<tfoot><tr><td colspan="2">  </td></tr></tfoot>
+</table>
+
+</div>
+<div class="content"><span class="button" onclick="history.go(-1)">Back</span>
+<span class="button" style="float: right;" onclick="document.forms[0].submit()">Save</span> </div>
+
+<% end %>

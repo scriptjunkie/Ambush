@@ -1,0 +1,14 @@
+<% content_for :headeritem do %>
+<a href="/alerts" style="float:right">back</a>
+<% end %>
+
+<div class="content">
+	
+<p>
+<%= h(@alert.action.name) %>
+<%= h(@alert.action.severity) %>
+<%= h(@alert.action.actionStr) %>
+<%= h(@alert.action.available_function.available_dll.name) %>
+<%= h(@alert.action.available_function.name+'('+@alert.alert_args.map { |aa| aa.display }.join(",")+')') %>
+</p>
+</div>

@@ -1,0 +1,245 @@
+/*
+ * This is a manifest file that'll automatically include all the stylesheets available in this directory
+ * and any sub-directories. You're free to add application-wide styles to this file and they'll appear at
+ * the top of the compiled file, but it's generally better to create a new file per style scope.
+ *= require_self
+ *= require_tree . 
+*/
+
+/* STICKY FOOTER */
+html, body {height: 100%;}
+#wrap {min-height: 100%;}
+#main {overflow:auto;
+padding-bottom: 80px;}
+#footer {position: relative;
+margin-top: -32px;
+clear:both;}
+
+html, .modal{
+background-color: #660000;
+-moz-background-size: 25px 25px;
+-webkit-background-size: 25px 25px;
+-o-background-size: 25px 25px;
+background-size: 25px 25px;
+background-image: -webkit-gradient(linear, 0% 0%, 100% 100%, color-stop(25%, rgba(0, 0, 0, 0.1)), color-stop(25%, rgba(0, 0, 0, 0)), color-stop(50%, rgba(0, 0, 0, 0)), color-stop(50%, rgba(0, 0, 0, 0.1)), color-stop(75%, rgba(0, 0, 0, 0.1)), color-stop(75%, rgba(0, 0, 0, 0)), color-stop(100%, rgba(0, 0, 0, 0)));
+background-image: -moz-linear-gradient(left top, rgba(0, 0, 0, 0.1) 25%, rgba(0, 0, 0, 0) 25%, rgba(0, 0, 0, 0) 50%, rgba(0, 0, 0, 0.1) 50%, rgba(0, 0, 0, 0.1) 75%, rgba(0, 0, 0, 0) 75%, rgba(0, 0, 0, 0));
+background-image: linear-gradient(left top, rgba(0, 0, 0, 0.1) 25%, rgba(0, 0, 0, 0) 25%, rgba(0, 0, 0, 0) 50%, rgba(0, 0, 0, 0.1) 50%, rgba(0, 0, 0, 0.1) 75%, rgba(0, 0, 0, 0) 75%, rgba(0, 0, 0, 0));
+}
+body{
+margin: 0;
+}
+input{
+font-family: Courier;
+}
+div.header, div.footer{
+box-shadow: 10px 10px 10px rgba(0, 0, 0, 0.6);
+margin-right: auto;
+margin-left: auto;
+width: 90%;
+background: #c42727; /* Old browsers */
+background: -moz-linear-gradient(top, #c42727 0%, #a00000 100%); /* FF3.6+ */
+background: -webkit-gradient(linear, left top, left bottom, color-stop(0%,#c42727), color-stop(100%,#a00000)); /* Chrome,Safari4+ */
+background: -webkit-linear-gradient(top, #c42727 0%,#a00000 100%); /* Chrome10+,Safari5.1+ */
+background: -o-linear-gradient(top, #c42727 0%,#a00000 100%); /* Opera 11.10+ */
+background: -ms-linear-gradient(top, #c42727 0%,#a00000 100%); /* IE10+ */
+background: linear-gradient(top, #c42727 0%,#a00000 100%); /* W3C */
+}
+.earlyie div.header, .earlyie div.footer{
+filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#c42727', endColorstr='#a00000',GradientType=0 ); /* IE6-9 */
+}
+div.header{
+border-bottom-left-radius: 10px;
+border-bottom-right-radius: 10px;
+margin-top: 0px;
+margin-bottom: 20px;
+}
+div.footer{
+margin-bottom: 0px;
+border-top-left-radius: 10px;
+border-top-right-radius: 10px;
+}
+div.content{
+width: 90%;
+margin-left: auto;
+margin-right: auto;
+margin-bottom: 20px;
+position:relative;
+}
+p, span.button {
+margin: 0px;
+padding:2px 20px 2px 20px;
+color: white;
+text-align: left;
+font: 16px Courier;
+}
+p.head {
+padding:6px 20px 8px 20px;
+}
+span.button {
+padding: 5px 15px;
+box-shadow: 10px 10px 10px rgba(0, 0, 0, 0.6);
+color: black;
+border-radius: 10px;
+background: #e0e0e0; /* Old browsers */
+background: -moz-linear-gradient(top, #e0e0e0 0%, #a8a8a8 50%, #e0e0e0 100%); /* FF3.6+ */
+background: -webkit-gradient(linear, left top, left bottom, color-stop(0%,#e0e0e0), color-stop(50%,#a8a8a8), color-stop(100%,#e0e0e0)); /* Chrome,Safari4+ */
+background: -webkit-linear-gradient(top, #e0e0e0 0%,#a8a8a8 50%,#e0e0e0 100%); /* Chrome10+,Safari5.1+ */
+background: -o-linear-gradient(top, #e0e0e0 0%,#a8a8a8 50%,#e0e0e0 100%); /* Opera 11.10+ */
+background: -ms-linear-gradient(top, #e0e0e0 0%,#a8a8a8 50%,#e0e0e0 100%); /* IE10+ */
+background: linear-gradient(top, #e0e0e0 0%,#a8a8a8 50%,#e0e0e0 100%); /* W3C */
+}
+.earlyie span.button{
+filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#e0e0e0', endColorstr='#e0e0e0',GradientType=0 ); /* IE6-9 */
+}
+span.button:hover {
+background: #f0f0f0; /* Old browsers */
+background: -moz-linear-gradient(top, #ffffff 0%, #cccccc 50%, #ffffff 100%); /* FF3.6+ */
+background: -webkit-gradient(linear, left top, left bottom, color-stop(0%,#ffffff), color-stop(50%,#cccccc), color-stop(100%,#ffffff)); /* Chrome,Safari4+ */
+background: -webkit-linear-gradient(top, #ffffff 0%,#cccccc 50%,#ffffff 100%); /* Chrome10+,Safari5.1+ */
+background: -o-linear-gradient(top, #ffffff 0%,#cccccc 50%,#ffffff 100%); /* Opera 11.10+ */
+background: -ms-linear-gradient(top, #ffffff 0%,#cccccc 50%,#ffffff 100%); /* IE10+ */
+background: linear-gradient(top, #ffffff 0%,#cccccc 50%,#ffffff 100%); /* W3C */
+}
+.earlyie span.button:hover{
+filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#ffffff', endColorstr='#ffffff',GradientType=0 ); /* IE6-9 */
+}
+p.dialog{
+box-shadow: none;
+color: white;
+}
+table.sortable {
+border-collapse: collapse;
+border: 1px solid #666666;
+font: normal 11px verdana, arial, helvetica, sans-serif;
+color: #363636;
+background: #f6f6f6;
+text-align:left;
+box-shadow: 10px 10px 10px rgba(0, 0, 0, 0.6);
+padding:6px 20px 10px 20px;
+}
+div.caption {
+color: white;
+text-align: center;
+font: bold 20px Courier;
+padding:6px 20px 8px 20px;
+text-transform: uppercase;
+border-top-left-radius: 10px;
+border-top-right-radius: 10px;
+background: #e80000; /* Old browsers */
+background: -moz-linear-gradient(top, #e80000 0%, #aa0000 34%, #9b0000 65%, #680000 100%); /* FF3.6+ */
+background: -webkit-gradient(linear, left top, left bottom, color-stop(0%,#e80000), color-stop(34%,#aa0000), color-stop(65%,#9b0000), color-stop(100%,#680000)); /* Chrome,Safari4+ */
+background: -webkit-linear-gradient(top, #e80000 0%,#aa0000 34%,#9b0000 65%,#680000 100%); /* Chrome10+,Safari5.1+ */
+background: -o-linear-gradient(top, #e80000 0%,#aa0000 34%,#9b0000 65%,#680000 100%); /* Opera 11.10+ */
+background: -ms-linear-gradient(top, #e80000 0%,#aa0000 34%,#9b0000 65%,#680000 100%); /* IE10+ */
+background: linear-gradient(top, #e80000 0%,#aa0000 34%,#9b0000 65%,#680000 100%); /* W3C */
+}
+.earlyie div.caption{
+filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#e80000', endColorstr='#680000',GradientType=0 ); /* IE6-9 */
+}
+thead, tfoot {
+background: #f1f1f1;
+text-align:left;
+height:30px;
+}
+thead th, tfoot th {
+padding:5px;
+}
+table a {
+color: #333333;
+text-decoration:none;
+}
+table a:hover {
+text-decoration:underline;
+}
+tr.odd {
+background: #f1f1f1;
+}
+table.sortable th, table.sortable td {
+padding: 2px;
+}
+a {
+color: white;
+text-decoration: none;
+}
+table.dialog, table.dialog a, table.dialog td{
+color: white;
+padding 0px;
+}
+a:hover {
+text-decoration: underline;
+}
+
+.modal {
+background-color:#333;
+display:none;
+
+padding:15px;
+text-align:left;
+border:2px solid #666;
+width: 80%;
+margin:auto;
+border-radius:6px;
+box-shadow: 0 0 90px #000;
+z-index:1;
+}
+
+.modal h2, h3 {
+margin:0px;
+padding:10px 0 10px 45px;
+font: bold 20px Courier;
+color:white;
+}
+.modal h2 {
+border-bottom:1px solid #888;
+}
+.modal h3 {
+padding:10px 0 10px 20px;
+font: bold 16px Courier;
+}
+div.overflowdiv {
+	overflow: auto;
+}
+.tooltip {
+z-index:20;
+display:none;
+font-size:12px;
+width:210px;
+padding:25px;
+color:#fff;
+border-radius: 10px;
+box-shadow: 10px 10px 10px rgba(0, 0, 0, 0.8);
+font: normal 14px Courier;
+
+background: #e80000; /* Old browsers */
+background: -moz-linear-gradient(top, #e80000 0%, #aa0000 34%, #9b0000 65%, #680000 100%); /* FF3.6+ */
+background: -webkit-gradient(linear, left top, left bottom, color-stop(0%,#e80000), color-stop(34%,#aa0000), color-stop(65%,#9b0000), color-stop(100%,#680000)); /* Chrome,Safari4+ */
+background: -webkit-linear-gradient(top, #e80000 0%,#aa0000 34%,#9b0000 65%,#680000 100%); /* Chrome10+,Safari5.1+ */
+background: -o-linear-gradient(top, #e80000 0%,#aa0000 34%,#9b0000 65%,#680000 100%); /* Opera 11.10+ */
+background: -ms-linear-gradient(top, #e80000 0%,#aa0000 34%,#9b0000 65%,#680000 100%); /* IE10+ */
+background: linear-gradient(top, #e80000 0%,#aa0000 34%,#9b0000 65%,#680000 100%); /* W3C */
+}
+.earlyie .tooltip{
+filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#e80000', endColorstr='#680000',GradientType=0 ); /* IE6-9 */
+}
+pre{
+color:#fff;
+margin:0px;
+}
+input[type=text], select{
+width: 150px;
+color:black;
+}
+input.wide{
+width: 304px;
+}
+span.left {
+position:absolute;
+left:0px;
+}
+span.right {
+position:absolute;
+right:0px;
+}
+textarea{
+margin:0px;
+}

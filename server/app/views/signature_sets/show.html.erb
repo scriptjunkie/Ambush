@@ -1,0 +1,106 @@
+<% content_for :headeritem do %>
+  <a href="/signature_sets/<%= @signature_set.id %>/edit" style="float:right">details</a>
+<% end %>
+<% content_for :unwrapped do %>
+<%= javascript_include_tag 'sorttable.js' %>
+<script>
+numSigs = <%= @signature_set.actions.length %>;
+dlls = '<%= h(AvailableDll.all(:order => "name").map{|ad| ad.name}.join(',')) %>'.split(',');
+</script>
+
+<div class="modal" id="delete" style="width: auto">
+	<h2>Confirmation</h2>
+	<p class="dialog">
+		Are you sure you want to delete these signatures?
+	</p>
+	<p class="dialog">
+		<button class="close" rel="#yesno" onclick="deleteSigs()"> Yes </button>
+		<button class="close" rel="#yesno"> No </button>
+	</p>
+</div>
+
+<div class="modal" id="new">
+	<h2 id="modalTitle">New signature</h2>
+	<p class="dialog">
+		Define the function and parameters for the signature.
+	</p>
+		<div class="overflowdiv">
+		<h3>Info</h3>
+	<form id="newform" onsubmit='return copyContent()'>
+		<input type="hidden" name="signature_set_id" value="<%= @signature_set.id %>"></input>
+		<table>
+		<thead></thead>
+		<tbody>
+			<tr><td><p class="dialog">Name</p></td><td colspan=3><input name="act[name]" type="text" class="wide" value="Signature 1" title="The displayed name of your signature"></input></td><td><p class="dialog">Notes</p></td></tr>
+			<tr><td><p class="dialog">Action</p></td><td><select id="actionSelect" name="act[action]" onchange="checkActionSelect()"><option value="ALERT">Alert</option><option value="BLOCK">Block</option><option value="KILLTHREAD">Kill thread</option><option value="KILLPROC">Kill process</option></select></td><td><p name="act[retval]">Return:</p></td><td><input name="act[retval]" type="text" value="0" title="Value to return"></input></td><td rowspan=3><textarea name="act[notes]" cols=50 rows=4></textarea></td></tr>
+			<tr><td><p class="dialog">Severity</p></td><td><select id="severitySelect" name="severity" onchange="$('#severityCustom').val($('#severitySelect').val());"><option value="0">None</option><option value="1000">Low</option><option value="2000">Medium</option><option value="3000">High</option><option value="4000">Critical</option></select></td><td><input id="severityCustom" name="act[severity]" type="text" value="0" size=5 title="The severity of a signature match on a scale of 0-4000 (or more if you're panicky)"></input></td></tr>
+			<tr><td><p class="dialog">Process</p></td><td colspan=2><input name="act[exepath]" class="wide" type="text" value="" title="Process name or path to match, in regular expression syntax. Leave blank to enable signature on any process"></input></td></tr>
+		</tbody>
+		</table>
+		<h3>Function</h3>
+		<table>
+		<thead></thead>
+		<tbody>
+			<tr><td><p class="dialog">DLL</p></td><td><select id="dllSelect" name="dll" 
+			onchange="dllChange();"></select></td><td><input id="dllCustom" name="dllCustom" 
+			type="text" value="custom dll" title="The DLL of the function you want to signature"></input></td>
+			<td rowspan="2"><pre id="decl"></pre></td></tr>
+			<tr><td><p class="dialog">Function</p></td><td><select id="functionSelect" 
+			name="function" onchange="functionChange();"></select></td>
+			<td><input id="functionCustom" name="functionCustom" type="text" value="custom function" 
+			title="The function you want to signature"></input></td></tr>
+		</tbody>
+		</table>
+		<h3>Parameters</h3>
+		<table class="dialog">
+    <tbody id="parambody">
+        <tr id="namerow">
+            <td></td>
+            <td><p class="param">Return Value</p></td>
+            <td><p class="dialog"><a id="addparameter">Add</a></p></td>
+            <td><p class="dialog"><a id="removeparameter">Remove</a></p></td>
+        </tr>
+        <tr id="typerow">
+            <td><p class="dialog">Type</p></td>
+            <td><p class="param">Pointer</p></td>
+        </tr>
+        <tr id="restrictiontyperow">
+            <td><p class="dialog">Restriction</p></td>
+            <td><select id="sels-1" name="retprotectType" onchange="subtypeChange(-1)">
+            <option value="DONTCARE">Ignore</option><option value="MEM">Memory Protection</option></select></td>
+        </tr>
+        <tr id="restrictionrow">
+            <td><p class="dialog">Value</p></td>
+            <td id="restrictval-1"></td>
+        </tr>
+    </tbody>
+</table>
+		</div>
+
+		<input type="submit" value="Submit"></input>
+		<input type="submit" value="Close" onclick="closeOverlay();return false;"></input>
+	</form>
+	<br />
+</div>
+<% end %>
+
+<div class="content">
+<div class="caption">Signatures</div>
+<table class="sortable" id="maintable" style="width: 100%">
+	<thead><tr><th scope="col"><input type="checkbox" onchange="$('input[type=checkbox]').prop('checked',this.checked)"></input></th><th scope="col">Name</th><th scope="col">DLL</th>
+	<th scope="col">Function</th><th scope="col">Action</th><th scope="col">Arguments</th></tr></thead>
+	<tbody id="sigtbody">
+	<% @signature_set.actions.each do |action| %>
+		<th><input type="checkbox" id="<%= action.id %>_box"></input></th><th scope="row" id="r100"><%= 
+		action.name %></th><td><%= action.available_function.available_dll.name %></td><td><%= 
+		action.available_function.name %></td><td><%= action.actionStr %></td><td>
+		<%= action.arg_str %>
+		</td></tr>			
+	<% end %>
+	</tbody>
+	<tfoot><tr><th scope="row">Total</th><td id="statsBox" colspan="5"><%= @signature_set.actions.length %></td></tr></tfoot>
+</table>
+
+</div>
+<div class="content"><span class="left"><span class="button" rel="#delete">Delete</span>
+<span class="button" onclick="editAction()">Edit</span></span> <span class="right"><span class="button" onclick="newAction()">New</span></span> </div>

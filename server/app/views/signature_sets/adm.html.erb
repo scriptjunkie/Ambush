@@ -1,0 +1,13 @@
+CLASS MACHINE
+CATEGORY "Ambush"
+	POLICY "Signatures"
+		KEYNAME "Software\Scriptjunkie\Ambush"
+		PART "Signature Server" EDITTEXT REQUIRED
+			VALUENAME "SignatureServer"
+			DEFAULT "<%=params[:domain] %>"
+		END PART
+		PART "Signature Set" NUMERIC REQUIRED DEFAULT <%=@signature_set.id %>
+			VALUENAME "SignatureSet"
+		END PART
+	END POLICY
+END CATEGORY
