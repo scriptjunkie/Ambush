@@ -1,13 +1,26 @@
 <div class="content">
+<div class="login">
+<% if @first_time %>
+<h2>Ambush Setup</h2><h3>Enter admin credentials:</h3>
+<% else %>
+<h2>Ambush Login</h2>
+<% end %>
 <%= form_tag sessions_path do %>
   <p>
-    <%= label_tag :login, "Username or Email Address" %><br />
-    <%= text_field_tag :login, params[:login] %>
+    <%= label_tag :login, "Username" %>
+     <input id="login" name="login" type="text" />
   </p>
   <p>
-    <%= label_tag :password %><br />
-    <%= password_field_tag :password %>
+    <%= label_tag :password %>
+    <input id="password" name="password" type="password" />
   </p>
-  <p><%= submit_tag "Log in" %></p>
+  <p>
+<% if @first_time %>
+  <%= submit_tag "Register" %>
+<% else %>
+  <%= submit_tag "Log in" %>
 <% end %>
+</p>
+<% end %>
+</div>
 </div>

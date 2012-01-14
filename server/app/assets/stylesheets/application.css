@@ -31,7 +31,7 @@ margin: 0;
 input{
 font-family: Courier;
 }
-div.header, div.footer{
+div.header, div.footer, div.login{
 box-shadow: 10px 10px 10px rgba(0, 0, 0, 0.6);
 margin-right: auto;
 margin-left: auto;
@@ -44,8 +44,14 @@ background: -o-linear-gradient(top, #c42727 0%,#a00000 100%); /* Opera 11.10+ */
 background: -ms-linear-gradient(top, #c42727 0%,#a00000 100%); /* IE10+ */
 background: linear-gradient(top, #c42727 0%,#a00000 100%); /* W3C */
 }
-.earlyie div.header, .earlyie div.footer{
+.earlyie div.header, .earlyie div.footer, .earlyie div.login{
 filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#c42727', endColorstr='#a00000',GradientType=0 ); /* IE6-9 */
+}
+div.login{
+border-radius: 20px;
+margin: 15% auto 40px;
+padding: 20px;
+width: 400px;
 }
 div.header{
 border-bottom-left-radius: 10px;
@@ -183,7 +189,7 @@ box-shadow: 0 0 90px #000;
 z-index:1;
 }
 
-.modal h2, h3 {
+.modal h2, h3, .login h2  {
 margin:0px;
 padding:10px 0 10px 45px;
 font: bold 20px Courier;
@@ -191,6 +197,10 @@ color:white;
 }
 .modal h2 {
 border-bottom:1px solid #888;
+}
+.login h2 {
+border-bottom:1px solid #fff;
+margin-bottom:10px;
 }
 .modal h3 {
 padding:10px 0 10px 20px;
@@ -225,7 +235,7 @@ pre{
 color:#fff;
 margin:0px;
 }
-input[type=text], select{
+input[type=text], input[type=password], select{
 width: 150px;
 color:black;
 }

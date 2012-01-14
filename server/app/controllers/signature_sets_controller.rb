@@ -1,6 +1,6 @@
 class SignatureSetsController < ApplicationController
 	protect_from_forgery
-	before_filter :login_required, :except => :compiled
+	before_filter :login_required, :except => [:compiled, :signature]
 	respond_to :json
 	respond_to :html
 

@@ -127,7 +127,7 @@ function subtypeChange(i, arg){
 			else
 				$('[name=blobval'+i+']').val(arg['val1']);
 		}
-	}else{
+	}else if(arg['val1']){
 		$('[name=val'+i+']').val(arg['val1']);
 		$('input[name=subval'+i+']').val(arg['val2']);
 		if(val == "BITMASK")

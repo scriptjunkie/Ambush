@@ -85,7 +85,7 @@ dlls = '<%= h(AvailableDll.all(:order => "name").map{|ad| ad.name}.join(',')) %>
 <% end %>
 
 <div class="content">
-<div class="caption">Signatures</div>
+<div class="caption">Signature Set <%= @signature_set.id %></div>
 <table class="sortable" id="maintable" style="width: 100%">
 	<thead><tr><th scope="col"><input type="checkbox" onchange="$('input[type=checkbox]').prop('checked',this.checked)"></input></th><th scope="col">Name</th><th scope="col">DLL</th>
 	<th scope="col">Function</th><th scope="col">Action</th><th scope="col">Arguments</th></tr></thead>

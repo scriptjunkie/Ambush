@@ -1,0 +1,36 @@
+# Ambush Server Setup
+# This is an example development setup with JRuby. 
+# Other configurations with ruby 1.9 should also be possible.
+
+#0. Ensure OpenSSL is installed and in your path. 
+# If not, download it from openssl.org or your distro.
+openssl -h
+
+#1. Download and extract JRuby
+wget http://jruby.org.s3.amazonaws.com/downloads/1.6.5.1/jruby-bin-1.6.5.1.tar.gz
+tar -xvzf jruby-bin-1.6.5.1.tar.gz
+cd jruby-1.6.5.1/bin/
+
+#1.5 Install rails
+./jruby --1.9 gem install rails
+
+#1.5.1 Wait a while. Ho hum. Go get some coffee.
+
+#2. Check out the Ambush source
+cd ../..
+git clone ssh://the.url.to.ambush.scriptjunkie/ambush.git
+cd ambush/server
+
+#3. Set up the gems and database (assuming the path to your jruby folder is ../../jruby-1.6.5.1/)
+../../jruby-1.6.5.1/bin/jruby --1.9 ../../jruby-1.6.5.1/bin/bundle install
+../../jruby-1.6.5.1/bin/jruby --1.9 ../../jruby-1.6.5.1/bin/rake db:setup
+
+#3.1 Wait a long time. Like go rent "Gettysburg" long time. Decent movie anyway.
+
+#4. Start your server
+../../jruby-1.6.5.1/bin/jruby --1.9 script/rails server
+
+#5. Go to http://localhost:3000/ 
+xdg-open http://localhost:3000/
+
+#6. Follow instructions to enter a user/pass for the admin
