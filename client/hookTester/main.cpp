@@ -13,16 +13,20 @@ DWORD WINAPI ThreadProc(LPVOID arg){
 }
 int CALLBACK WinMain(HINSTANCE,HINSTANCE,LPSTR,int){
 	if(MessageBoxA(NULL,"Manually load library?","Hook Tester",MB_YESNO) == IDYES)
+#ifdef _M_X64
+		if(LoadLibraryA("apihook64.dll") == NULL)
+#else
 		if(LoadLibraryA("apihook.dll") == NULL)
+#endif
 			MessageBoxA(NULL,"Load failed!","Hook Tester",0);
 	//Basic test
 	if(MessageBoxA(NULL,"Test starting. SleepEx 1000...","Hook tester",MB_YESNO) != IDNO)
 		SleepEx(1000, FALSE);
-	//Block test
-	if(MessageBoxA(NULL,"SleepEx 1001","Hook tester",MB_YESNO) != IDNO)
-		SleepEx(1001, FALSE);
+	//Block and aggregation test 
+	if(MessageBoxA(NULL,"SleepEx 1001 quad","Hook tester",MB_YESNO) != IDNO)
+		for(int i = 0; i < 4; i++)
+			SleepEx(1001, FALSE);
 	//Test LoadLibrary, GetProcAddress
-	MessageBoxA(NULL,"LoadLibraryA","Hook tester",0);
 	URLDownloadToFileAFunc URLDownloadToFileA = (URLDownloadToFileAFunc)
 		GetProcAddress(LoadLibraryA("urlmon"), "URLDownloadToFileA");
 	if(MessageBoxA(NULL,"URLDownloadToFileA http://yahoo.com/", "Hook tester", MB_YESNO) != IDNO)
@@ -33,7 +37,7 @@ int CALLBACK WinMain(HINSTANCE,HINSTANCE,LPSTR,int){
 	memset(&start,0,sizeof(start));
 	memset(&proc,0,sizeof(proc));
 	wchar_t cmdline[100];
-	lstrcpyW(cmdline,L"calc");
+	lstrcpyW(cmdline,L"C:\\Windows\\SysWoW64\\calc.exe");
 	if(MessageBoxA(NULL,"CreateProcessW calc", "Hook tester", MB_YESNO) != IDNO)
 		CreateProcessW(NULL,cmdline,NULL,NULL,0,0,NULL,NULL,&start,&proc);
 	if(MessageBoxA(NULL,"WinExec calc", "Hook tester", MB_YESNO) != IDNO)

@@ -11,7 +11,7 @@
 #
 # It's strongly recommended to check this file into your version control system.
 
-ActiveRecord::Schema.define(:version => 20120102235010) do
+ActiveRecord::Schema.define(:version => 20120114202412) do
 
   create_table "actions", :force => true do |t|
     t.string  "name"
@@ -46,6 +46,7 @@ ActiveRecord::Schema.define(:version => 20120102235010) do
     t.integer  "pid"
     t.string   "computer"
     t.string   "ip"
+    t.integer  "count"
   end
 
   add_index "alerts", ["action_id"], :name => "index_alerts_on_action_id"

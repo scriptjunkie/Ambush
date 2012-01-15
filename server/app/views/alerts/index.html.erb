@@ -5,12 +5,12 @@
 <div class="content">
 <table class="sortable" style="width: 100%">
 	<div class="caption">Alerts</div>
-	<thead><tr><th scope="col">Name</th><th scope="col">Time</th><th scope="col">Severity</th><th scope="col">Action</th><th scope="col">User</th><th scope="col">System</th><th scope="col">Process</th><th scope="col">DLL</th><th scope="col">Call</th></tr></thead>
+	<thead><tr><th scope="col">Name</th><th scope="col">Time</th><th scope="col">Severity</th><th scope="col">Action</th><th scope="col">User</th><th scope="col">System</th><th scope="col">Process</th><th scope="col">DLL</th><th scope="col">Call</th><th scope="col">Count</th></tr></thead>
 	<tfoot><tr><th scope="row">Total</th><td id="statsBox" colspan="9"><%= @alerts.length %></td></tr></tfoot>
 	<tbody id="sigtbody">
 	<% @alerts.each do |alert| %>
-		<tr><th scope="row"><%= alert.action.name %></th><td><%= alert.created_at %></td><td><%= alert.action.severity %></td><td><%=alert.action.actionStr %></td><td><%=alert.user %></td><td><%=alert.computer %> (<%=alert.ip %>)</td><td><%=alert.process %> (<%=alert.pid %>)</td><td><%= alert.action.available_function.available_dll.name %></td><td><%=alert.action.available_function.name+'('+alert.alert_args.map { |aa| aa.display }.join(",")+')' %>
-		</td></tr>			
+		<tr><th scope="row"><%= alert.action.name %></th><td><%=alert.created_at %> <%= alert.updated_at if alert.count > 1 and alert.updated_at - alert.created_at > 5 %></td><td><%= alert.action.severity %></td><td><%=alert.action.actionStr %></td><td><%=alert.user %></td><td><%=alert.computer %> (<%=alert.ip %>)</td><td><%=alert.process %> (<%=alert.pid %>)</td><td><%= alert.action.available_function.available_dll.name %></td><td><%=alert.action.available_function.name+'('+alert.alert_args.map { |aa| aa.display }.join(",")+')' %>
+		</td><td><%=alert.count%></td></tr>			
 	<% end %>
 	</tbody>
 </table>

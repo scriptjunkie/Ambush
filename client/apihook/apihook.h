@@ -28,9 +28,18 @@ typedef struct sHOOKAPI_MESSAGE
     DWORD   length; // of entire message
     DWORD   type;   // what action is firing
     DWORD   pid;
+    DWORD   count;
     DWORD   numArgs;
 } HOOKAPI_MESSAGE, *PHOOKAPI_MESSAGE;
-
+//tests whether messages are equal other than the count
+inline bool messageEqual(PHOOKAPI_MESSAGE first, PHOOKAPI_MESSAGE second){
+	DWORD firstCount = first->count; //Save counts
+	first->count = second->count; //Make counts the same
+	//Do the compare
+	bool retval = first->length == second->length && memcmp(first, second, first->length) == 0;
+	first->count = firstCount; //Reset the count
+	return retval;
+}
 
 //Functions
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved);

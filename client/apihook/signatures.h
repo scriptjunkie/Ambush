@@ -77,7 +77,7 @@ inline PHOOKAPI_ACTION_CONF nextActionConf(PHOOKAPI_ACTION_CONF conf){
 //Actions
 enum HookAction { ALERT, BLOCK, KILLPROC, KILLTHREAD };
 
-#define START_INFO (size_t)-1
+#define START_INFO (DWORD)-1
 
 typedef struct sHOOKAPI_FUNC_CONF
 {

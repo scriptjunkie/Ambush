@@ -9,6 +9,11 @@ using namespace std;
 #include "reporting.h"
 #include "signatures.h"
 #include "apihook.h"
+
+//Default 20s to conglomerate alerts
+#define ALERT_INTERVAL 20000
+#define SERVER_PORT 3000
+
 // some winHTTP defines
 HINTERNET (WINAPI *mWinHttpOpen)(
   __in_opt  LPCWSTR pwszUserAgent,
@@ -108,39 +113,76 @@ DWORD WINAPI HTTPthread(AlertQueueNode* argnode){
 	// Use WinHttpOpen to obtain a session handle.
 	if(loadWinHTTP() == FALSE)
 		return FALSE;
-	HINTERNET hSession = NULL,
-	hConnect = NULL,
-	hRequest = NULL;
-	hSession = mWinHttpOpen(  L"Ambush IPS Client", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
+	HINTERNET hConnect = NULL,
+	hRequest = NULL,
+	hSession = mWinHttpOpen(L"Ambush IPS Client", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
 			WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
 	//Get reporting server
 	size_t unused;
 	WCHAR server[257];
 	mbstowcs_s(&unused, server, apiConf->reportServer, apiConf->reportServerLen);
-	AlertQueueNode* lastnode = argnode; 
-	while(true){
-		//Get next alert
+
+	//Get start time & queue head
+	AlertQueueNode* lastnode = argnode;
+	LARGE_INTEGER lastAlert, currentTime;
+	DWORD msDifference;
+	GetSystemTimeAsFileTime((LPFILETIME)&lastAlert);
+	while(true){ //infinite loop
+		//Wait for next alert
 		WaitForSingleObject(lastnode->eventHandle, INFINITE);
-		AlertQueueNode* nextnode = lastnode->next;
-		HeapFree(rwHeap, 0, lastnode);
-		lastnode = nextnode;
+		// arrays of unique alerts
+		const int max_alerts = 32;
+		PHOOKAPI_MESSAGE alerts[max_alerts];
+		int alertCount = 0;
+		do{ //Loop to get all alerts for up to 20 seconds
+			AlertQueueNode* nextnode = lastnode->next;
+			HeapFree(rwHeap, 0, lastnode); //throw away last
+			lastnode = nextnode; //now last is the current one to be processed.
+			PHOOKAPI_MESSAGE message = lastnode->message;
+
+			//See if it is a dup
+			bool dup = false;
+			for(int i = 0; i < alertCount; i++){
+				if(messageEqual(alerts[i], message)){ // it's a dup
+					alerts[i]->count += message->count; // Add count
+					dup = true;
+					HeapFree(rwHeap, 0, message); //don't need this anymore
+					break;
+				}
+			}
+			if(dup == false){ //new alert, save a copy and check alert count
+				alerts[alertCount] = message;
+				alertCount++;
+				if(alertCount == max_alerts)
+					break; //We can't take any more!
+			}
+			GetSystemTimeAsFileTime((LPFILETIME)&currentTime);
+			msDifference = (currentTime.QuadPart - lastAlert.QuadPart) / 10000;
+			if(msDifference > ALERT_INTERVAL) //20 seconds
+				break;
+		} while(WaitForSingleObject(lastnode->eventHandle, ALERT_INTERVAL - msDifference) == WAIT_OBJECT_0);
+		lastAlert.QuadPart = currentTime.QuadPart;
+
 		// Connect to the HTTP server.
 		if (hSession)
-			hConnect = mWinHttpConnect( hSession, server, 3000, 0);//INTERNET_DEFAULT_HTTP_PORT
-		// Create an HTTP Request handle.
-		if (hConnect)
-			hRequest = mWinHttpOpenRequest( hConnect, L"POST", L"/alerts", 
-					NULL, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES,0);
-		BOOL  bResults = FALSE;
-		if (hRequest)
-			bResults = mWinHttpSendRequest( hRequest, L"Content-Type: application/octet-stream\r\n",
-					(DWORD)-1, lastnode->message, lastnode->message->length, lastnode->message->length, 0);
-		if (bResults)
-			bResults = mWinHttpReceiveResponse( hRequest, NULL);
-		//if (!bResults)...Errors. What do we do? Can't report to server. Already logged. oh well.
-		if (hRequest) mWinHttpCloseHandle(hRequest);
+			hConnect = mWinHttpConnect( hSession, server, SERVER_PORT, 0);//INTERNET_DEFAULT_HTTP_PORT
+		//Send request for each alert
+		for(int i = 0; i < alertCount; i++){
+			// Create an HTTP Request handle.
+			if (hConnect)
+				hRequest = mWinHttpOpenRequest( hConnect, L"POST", L"/alerts", 
+						NULL, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES,0);
+			BOOL  bResults = FALSE;
+			if (hRequest)
+				bResults = mWinHttpSendRequest( hRequest, L"Content-Type: application/octet-stream\r\n",
+						(DWORD)-1, alerts[i], alerts[i]->length, alerts[i]->length, 0);
+			HeapFree(rwHeap, 0, alerts[i]);
+			if (bResults)
+				bResults = mWinHttpReceiveResponse( hRequest, NULL);
+			//if (!bResults)...Errors. What do we do? Can't report to server. Already logged. oh well.
+			if (hRequest) mWinHttpCloseHandle(hRequest);
+		}
 		if (hConnect) mWinHttpCloseHandle(hConnect);
-		HeapFree(rwHeap, 0, lastnode->message);
 	}
 	if (hSession) mWinHttpCloseHandle(hSession); //not that we'll ever get here...
 }
@@ -313,6 +355,7 @@ void sendAlert(HOOKAPI_FUNC_CONF* conf, HOOKAPI_ACTION_CONF* action, void** call
 	message.length = (DWORD)messageStr.length() + sizeof(message);
 	message.type = action->id;
 	message.pid = GetCurrentProcessId();
+	message.count = 1; //Single alert
 	message.numArgs = conf->numArgs;
 
 	//Put it all together into a complete message

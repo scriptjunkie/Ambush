@@ -48,7 +48,6 @@
 				EnableIntrinsicFunctions="true"
 				OmitFramePointers="true"
 				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL;APIHOOK_EXPORTS"
-				RuntimeLibrary="0"
 				BufferSecurityCheck="false"
 				EnableFunctionLevelLinking="true"
 				UsePrecompiledHeader="0"
@@ -118,7 +117,7 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				DebugInformationFormat="0"
+				DebugInformationFormat="3"
 			/>
 			<Tool
 				Name="VCManagedResourceCompilerTool"

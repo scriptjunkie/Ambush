@@ -77,6 +77,7 @@ class SignatureSetsController < ApplicationController
 		@signature_set = SignatureSet.find(params[:id])
 		respond_to do |format|
 			if @signature_set.update_attributes(params[:signature_set])
+				@signature_set.markchanged
 				format.html { redirect_to @signature_set, notice: 'Signature set was successfully updated.' }
 				format.json { head :ok }
 			else
@@ -91,6 +92,6 @@ class SignatureSetsController < ApplicationController
 	def destroy
 		@signature_set = SignatureSet.find(params[:id])
 		@signature_set.destroy
-	respond_with({:message => 'Signature Set successfully destroyed!'}, :location => nil)
+		respond_with({:message => 'Signature Set successfully destroyed!'}, :location => nil)
 	end
 end

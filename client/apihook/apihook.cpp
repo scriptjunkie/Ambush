@@ -32,6 +32,8 @@ hookArgFunc getHookArg = NULL;
 OneArgFunc setEax = NULL;
 //Helper function to get a pointer to the PEB
 NoArgFunc getPEB = NULL;
+//Forces loading of appinit DLLs
+NoArgFunc LoadAppInitDllsAddr = NULL;
 
 //For allocating RWX memory,
 HANDLE rwxHeap = NULL;
@@ -291,6 +293,42 @@ void* hook0 (void* arg0){
 	return retfunc();
 }
 
+//CreateProcessInternalW hook functionality - ensures new processes get DLL loaded
+typedef DWORD (WINAPI * CreateProcessInternalWFunc)( PVOID, LPCWSTR, LPWSTR, LPSECURITY_ATTRIBUTES, 
+	LPSECURITY_ATTRIBUTES, BOOL, DWORD, LPVOID,LPCWSTR,LPSTARTUPINFOW,LPPROCESS_INFORMATION,PVOID);
+CreateProcessInternalWFunc CreateProcessInternalWReal;
+DWORD WINAPI CreateProcessInternalWHook(PVOID unknown1, LPCWSTR lpApplicationName, LPWSTR lpCommandLine, LPSECURITY_ATTRIBUTES lpProcessAttributes, LPSECURITY_ATTRIBUTES lpThreadAttributes,
+		BOOL bInheritHandles, DWORD dwCreationFlags, LPVOID lpEnvironment, LPCWSTR lpCurrentDirectory, LPSTARTUPINFOW lpStartupInfo, LPPROCESS_INFORMATION lpProcessInformation, PVOID unknown2){
+	bool alreadySuspended = (dwCreationFlags & CREATE_SUSPENDED) != 0;
+	DWORD retval = CreateProcessInternalWReal(unknown1, lpApplicationName, lpCommandLine, lpProcessAttributes, lpThreadAttributes, 
+		bInheritHandles, dwCreationFlags | CREATE_SUSPENDED, lpEnvironment, lpCurrentDirectory, lpStartupInfo, lpProcessInformation, unknown2);
+
+	// If something weird or bad or broken is happening, don't continue
+	if(alreadySuspended || retval == 0 || LoadAppInitDllsAddr == NULL)
+		return retval;
+
+	// Now ensure appinit dlls are loaded (kinda rop style - call LoadAppInitDlls and return to the original entry point)
+	CONTEXT context;
+	context.ContextFlags = CONTEXT_FULL;
+	if(GetThreadContext(lpProcessInformation->hThread, &context) == ERROR_SUCCESS){
+#ifdef _M_X64
+		if(WriteProcessMemory(lpProcessInformation->hProcess, (LPVOID)(context.Rsp - 8), 
+				&(context.Rip), 8, NULL) == ERROR_SUCCESS && LoadAppInitDllsAddr != NULL){
+			context.Rip = (SIZE_T)LoadAppInitDllsAddr;
+			context.Rsp -= 8;
+#else
+		if(WriteProcessMemory(lpProcessInformation->hProcess, (LPVOID)(context.Esp - 4), 
+				&(context.Eip), 4, NULL) != ERROR_SUCCESS && LoadAppInitDllsAddr != NULL){
+			context.Eip = (SIZE_T)LoadAppInitDllsAddr;
+			context.Esp -= 4;
+#endif
+		}
+		SetThreadContext(lpProcessInformation->hThread, &context);
+	}
+	ResumeThread(lpProcessInformation->hThread);
+	return retval;
+}
+
 //Hook for LoadLibraryA, LoadLibraryExA, LoadLibraryW, and LoadLibraryExW, to ensure new
 //libraries are hooked. The hook argument passed must be an integer number of arguments
 void* LoadLibraryHook(PVOID lpLibFileName, HANDLE hFile, PVOID dwFlags){
@@ -315,6 +353,20 @@ void* LoadLibraryHook(PVOID lpLibFileName, HANDLE hFile, PVOID dwFlags){
 }
 
 ////////////////////////////// Setup Functions //////////////////////////////////////
+
+//Makes a hook of an arbitrary function that calls hook0 with a given argument using a springboard
+BOOL makeHook(void* origProcAddr, void* farg, void* hook){
+	//args = [arg, origFunc]
+	void** args = (void**)HeapAlloc(rwHeap, 0, sizeof(void*)*2);
+	args[0] = farg;
+
+	//Now make springboard
+	HOOKAPI_SPRINGBOARD* springboard = getSpringboard(args, hook, rwxHeap);
+	if(springboard == NULL)
+		return FALSE;
+	args[1] = hooker->createHook<NoArgFunc>((NoArgFunc)origProcAddr, (NoArgFunc)springboard);
+	return TRUE;
+}
 
 //Prepares some memory items we'll need before calling makeHook on an arbitrary function
 //and loads configuration into memory
@@ -350,6 +402,22 @@ BOOL prepHookApi(){
 		*((PWORD)((PBYTE)stackFixups[i] + sizeof(STACK_FIXUP) - 1)) = i * sizeof(void*); //
 	}
 
+	HMODULE colonel = GetModuleHandleA("kernel32");
+	//Hook LoadLibrary and CreateProcessInternal calls
+	LoadAppInitDllsAddr = (NoArgFunc)GetProcAddress(colonel, "LoadAppInitDlls");
+	CreateProcessInternalWReal = hooker->createHook<CreateProcessInternalWFunc>((CreateProcessInternalWFunc)GetProcAddress(
+		colonel, "CreateProcessInternalW"), (CreateProcessInternalWFunc)CreateProcessInternalWHook);
+
+	//Setup LoadLibrary return functions to fix the function tails. Stupid compiler.
+	popRet1arg = (PBYTE)HeapAlloc(rwxHeap, 0, sizeof(POP_RET_ONE));
+	MoveMemory(popRet1arg, POP_RET_ONE, sizeof(POP_RET_ONE));
+	makeHook(GetProcAddress(colonel, "LoadLibraryA"), popRet1arg, &LoadLibraryHook);
+	makeHook(GetProcAddress(colonel, "LoadLibraryW"), popRet1arg, &LoadLibraryHook);
+	popRet3arg = (PBYTE)HeapAlloc(rwxHeap, 0, sizeof(POP_RET_THREE));
+	MoveMemory(popRet3arg, POP_RET_THREE, sizeof(POP_RET_THREE));
+	makeHook(GetProcAddress(colonel, "LoadLibraryExA"), popRet3arg, &LoadLibraryHook);
+	makeHook(GetProcAddress(colonel, "LoadLibraryExW"), popRet3arg, &LoadLibraryHook);
+
 	//Find configuration file from same binary directory as this file
 	char filename[1000];
 	DWORD size = GetModuleFileNameA(myDllHandle, filename, sizeof(filename));
@@ -369,20 +437,6 @@ BOOL prepHookApi(){
 			return FALSE;
 	}
 	CloseHandle(sigFileHandle);
-	return TRUE;
-}
-
-//Makes a hook of an arbitrary function that calls hook0 with a given argument using a springboard
-BOOL makeHook(void* origProcAddr, void* farg, void* hook){
-	//args = [arg, origFunc]
-	void** args = (void**)HeapAlloc(rwHeap, 0, sizeof(void*)*2);
-	args[0] = farg;
-
-	//Now make springboard
-	HOOKAPI_SPRINGBOARD* springboard = getSpringboard(args, hook, rwxHeap);
-	if(springboard == NULL)
-		return FALSE;
-	args[1] = hooker->createHook<NoArgFunc>((NoArgFunc)origProcAddr, (NoArgFunc)springboard);
 	return TRUE;
 }
 
@@ -470,18 +524,5 @@ BOOL WINAPI DllMain(HINSTANCE instance, DWORD fdwReason, LPVOID){
 	hookAllDlls(); //Hook the ones we have now
 	//And check again after all dlls are initialized
 	CreateThread(NULL, 0, &postInit, NULL, 0, NULL); //This will run after all DllMains
-
-	//Hook LoadLibrary calls
-	HMODULE colonel = LoadLibraryA("kernel32");
-	//Setup LoadLibrary return functions to fix the function tails. Stupid compiler.
-	popRet1arg = (PBYTE)HeapAlloc(rwxHeap, 0, sizeof(POP_RET_ONE));
-	MoveMemory(popRet1arg, POP_RET_ONE, sizeof(POP_RET_ONE));
-	makeHook(GetProcAddress(colonel, "LoadLibraryA"), popRet1arg, &LoadLibraryHook);
-	makeHook(GetProcAddress(colonel, "LoadLibraryW"), popRet1arg, &LoadLibraryHook);
-	popRet3arg = (PBYTE)HeapAlloc(rwxHeap, 0, sizeof(POP_RET_THREE));
-	MoveMemory(popRet3arg, POP_RET_THREE, sizeof(POP_RET_THREE));
-	makeHook(GetProcAddress(colonel, "LoadLibraryExA"), popRet3arg, &LoadLibraryHook);
-	makeHook(GetProcAddress(colonel, "LoadLibraryExW"), popRet3arg, &LoadLibraryHook);
-
 	return TRUE;
 }

@@ -268,7 +268,8 @@ int main(int argc, char** argv){
 		requireSignedAppInit32 = 0;
 	length = sizeof(appinitDlls32);
 	if(RegQueryValueExA(winkey32,"AppInit_DLLs",NULL,NULL,(PBYTE)appinitDlls32,&length32) != ERROR_SUCCESS)
-		length = 1;//make it a 0 length string
+		length = 1;//make it a 0 length string
+
 	//Check if 64 bit
 	IsWow64ProcessFunc isWow = (IsWow64ProcessFunc)GetProcAddress(
 		GetModuleHandleA("kernel32"),"IsWow64Process");
@@ -347,7 +348,7 @@ int main(int argc, char** argv){
 		WCHAR fn[2000];
 		GetModuleFileNameW(NULL, fn, 2000);
 		StringCbPrintfW(cmdbuf, 2000, 
-			L"/c schtasks /create /tn AmbushSigUpdate /tr \"\\\"%s\\\" update\" /sc hourly /mo 4 /ru System", fn);
+			L"schtasks /Create /TN AmbushSigUpdate /TR \"\\\"%s\\\" update\" /SC hourly /MO 4 /RU System", fn);
 		
 		STARTUPINFOW siStartupInfo;
 		PROCESS_INFORMATION piProcessInfo;
@@ -359,7 +360,7 @@ int main(int argc, char** argv){
 		GetSystemDirectoryW(dirbuf,1999);
 		SetCurrentDirectoryW(dirbuf);
 		// run command
-		if (CreateProcessW(L"cmd.exe", cmdbuf, 0, 0, FALSE, 0, 0, 0, &siStartupInfo, &piProcessInfo) == FALSE){
+		if (CreateProcessW(NULL, cmdbuf, 0, 0, FALSE, 0, 0, 0, &siStartupInfo, &piProcessInfo) == FALSE){
 			removeReg(); //clean up
 			die("Error scheduling update task.");
 		}
@@ -375,13 +376,13 @@ int main(int argc, char** argv){
 		memset(&piProcessInfo, 0, sizeof(piProcessInfo));
 		siStartupInfo.cb = sizeof(siStartupInfo);
 		WCHAR cmdline[1000];
-		lstrcpyW(cmdline, L"/c schtasks /delete /tn AmbushSigUpdate /f");
+		lstrcpyW(cmdline, L"schtasks /delete /tn AmbushSigUpdate /f");
 		// set directory
 		WCHAR dirbuf[2000];
 		GetSystemDirectoryW(dirbuf,1999);
 		SetCurrentDirectoryW(dirbuf);
 		// run command
-		if (CreateProcessW(L"cmd.exe", cmdline, 0, 0, FALSE, 0, 0, 0, &siStartupInfo, &piProcessInfo) == FALSE)
+		if (CreateProcessW(NULL, cmdline, 0, 0, FALSE, 0, 0, 0, &siStartupInfo, &piProcessInfo) == FALSE)
 			cerr << "Error unscheduling update task.\n";
 	}else if(command.compare("update") == 0){
 		doUpdate();

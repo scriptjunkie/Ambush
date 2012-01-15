@@ -40,7 +40,7 @@ class AlertsController < ApplicationController
 		@alert = Alert.new
 		size = request.body.read(4).unpack('V')[0]
 		message = request.body.read(size - 4)
-		aid, @alert.pid, argcount = message.slice!(0, 12).unpack('VVV')
+		aid, @alert.pid, @alert.count, argcount = message.slice!(0, 16).unpack('VVVV')
 		act = Action.find(aid)
 		@alert.action = act
 		@alert.ip = request.remote_ip
@@ -60,11 +60,18 @@ class AlertsController < ApplicationController
 		@alert.computer = message.slice!(0, computerlen).force_encoding("UTF-16LE").encode('UTF-8')
 		proclen = message.slice!(0, 4).unpack('V')[0]
 		@alert.process = message.slice!(0, proclen).force_encoding("UTF-16LE").encode('UTF-8')
-		@alert.save
 
-		respond_to do |format|
-				format.html { redirect_to @alert, notice: 'Alert was successfully created.' }
-				format.json { render json: @alert, status: :created, location: @alert }
+		#check for dups
+		lastAlert = Alert.where(:pid => @alert.pid, :user => @alert.user, :action_id => aid, :ip => @alert.ip, 
+				:computer => @alert.computer).where('created_at > ?', Time.current - 3600).first
+		if lastAlert
+			lastAlert.count += @alert.count
+			lastAlert.save
+			@alert.destroy
+		else
+			@alert.save
 		end
+
+		send_data ''
 	end
 end
