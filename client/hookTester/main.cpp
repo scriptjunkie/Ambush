@@ -26,6 +26,9 @@ int CALLBACK WinMain(HINSTANCE,HINSTANCE,LPSTR,int){
 	if(MessageBoxA(NULL,"SleepEx 1001 quad","Hook tester",MB_YESNO) != IDNO)
 		for(int i = 0; i < 4; i++)
 			SleepEx(1001, FALSE);
+	if(MessageBoxA(NULL,"SleepEx 1001 quad","Hook tester",MB_YESNO) != IDNO)
+		for(int i = 0; i < 4; i++)
+			SleepEx(1001, FALSE);
 	//Test LoadLibrary, GetProcAddress
 	URLDownloadToFileAFunc URLDownloadToFileA = (URLDownloadToFileAFunc)
 		GetProcAddress(LoadLibraryA("urlmon"), "URLDownloadToFileA");

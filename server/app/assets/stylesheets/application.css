@@ -123,6 +123,9 @@ text-align:left;
 box-shadow: 10px 10px 10px rgba(0, 0, 0, 0.6);
 padding:6px 20px 10px 20px;
 }
+tr.new {
+background: #ffffaa;
+}
 div.caption {
 color: white;
 text-align: center;

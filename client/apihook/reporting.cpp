@@ -126,10 +126,10 @@ DWORD WINAPI HTTPthread(AlertQueueNode* argnode){
 	AlertQueueNode* lastnode = argnode;
 	LARGE_INTEGER lastAlert, currentTime;
 	DWORD msDifference;
-	GetSystemTimeAsFileTime((LPFILETIME)&lastAlert);
 	while(true){ //infinite loop
 		//Wait for next alert
 		WaitForSingleObject(lastnode->eventHandle, INFINITE);
+		GetSystemTimeAsFileTime((LPFILETIME)&lastAlert);
 		// arrays of unique alerts
 		const int max_alerts = 32;
 		PHOOKAPI_MESSAGE alerts[max_alerts];

@@ -2,6 +2,9 @@
   <a href="/alerts/clear" style="float:right">clear</a>
 <% end %>
 <%= javascript_include_tag 'sorttable.js' %>
+<script>
+lastUpdate = <%=Time.now.to_f %>;
+</script>
 <div class="content">
 <table class="sortable" style="width: 100%">
 	<div class="caption">Alerts</div>
@@ -9,7 +12,7 @@
 	<tfoot><tr><th scope="row">Total</th><td id="statsBox" colspan="9"><%= @alerts.length %></td></tr></tfoot>
 	<tbody id="sigtbody">
 	<% @alerts.each do |alert| %>
-		<tr><th scope="row"><%= alert.action.name %></th><td><%=alert.created_at %> <%= alert.updated_at if alert.count > 1 and alert.updated_at - alert.created_at > 5 %></td><td><%= alert.action.severity %></td><td><%=alert.action.actionStr %></td><td><%=alert.user %></td><td><%=alert.computer %> (<%=alert.ip %>)</td><td><%=alert.process %> (<%=alert.pid %>)</td><td><%= alert.action.available_function.available_dll.name %></td><td><%=alert.action.available_function.name+'('+alert.alert_args.map { |aa| aa.display }.join(",")+')' %>
+		<tr id="a<%=alert.id%>"><th scope="row"><%= alert.action.name %></th><td><%=alert.created_at %> <%= alert.updated_at if alert.count > 1 and alert.updated_at - alert.created_at > 5 %></td><td><%= alert.action.severity %></td><td><%=alert.action.actionStr %></td><td><%=alert.user %></td><td><%=alert.computer %> (<%=alert.ip %>)</td><td><%=alert.process %> (<%=alert.pid %>)</td><td><%= alert.action.available_function.available_dll.name %></td><td><%=alert.action.available_function.name+'('+alert.alert_args.map { |aa| aa.display }.join(",")+')' %>
 		</td><td><%=alert.count%></td></tr>			
 	<% end %>
 	</tbody>
