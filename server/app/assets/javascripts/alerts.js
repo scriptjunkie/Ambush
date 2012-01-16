@@ -9,4 +9,5 @@ function updateAlerts(){
 		}
 	);
 }
-setInterval(updateAlerts,10000);
+if (location.href.indexOf('offset') == -1)
+	window.poll = setInterval(updateAlerts,10000);

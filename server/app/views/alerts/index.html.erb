@@ -1,5 +1,5 @@
 <% content_for :headeritem do %>
-  <a href="/alerts/clear" style="float:right">clear</a>
+  <a href="/alerts/clear" style="float:right" onclick="return confirm('Are you sure you want to clear all alerts?')">clear</a>
 <% end %>
 <%= javascript_include_tag 'sorttable.js' %>
 <script>
@@ -9,7 +9,19 @@ lastUpdate = <%=Time.now.to_f %>;
 <table class="sortable" style="width: 100%">
 	<div class="caption">Alerts</div>
 	<thead><tr><th scope="col">Name</th><th scope="col">Time</th><th scope="col">Severity</th><th scope="col">Action</th><th scope="col">User</th><th scope="col">System</th><th scope="col">Process</th><th scope="col">DLL</th><th scope="col">Call</th><th scope="col">Count</th></tr></thead>
-	<tfoot><tr><th scope="row">Total</th><td id="statsBox" colspan="9"><%= @alerts.length %></td></tr></tfoot>
+	<tfoot><tr><td>
+<% if @offset >= @limit %>
+	<% if  @offset == @limit %>
+		<a href="alerts">previous</a>
+	<% else %>
+		<a href="alerts?offset=<%=(@offset-@limit) %>">previous</a>
+	<% end %>
+<% end %>
+	</td><td colspan="9" style="text-align: right">
+<% if @alerts.count == @limit %>
+	<a href="alerts?offset=<%=@offset + @limit %>">next</a>
+<% end %>
+	</td></tr></tfoot>
 	<tbody id="sigtbody">
 	<% @alerts.each do |alert| %>
 		<tr id="a<%=alert.id%>"><th scope="row"><%= alert.action.name %></th><td><%=alert.created_at %> <%= alert.updated_at if alert.count > 1 and alert.updated_at - alert.created_at > 5 %></td><td><%= alert.action.severity %></td><td><%=alert.action.actionStr %></td><td><%=alert.user %></td><td><%=alert.computer %> (<%=alert.ip %>)</td><td><%=alert.process %> (<%=alert.pid %>)</td><td><%= alert.action.available_function.available_dll.name %></td><td><%=alert.action.available_function.name+'('+alert.alert_args.map { |aa| aa.display }.join(",")+')' %>

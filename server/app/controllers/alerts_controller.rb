@@ -5,10 +5,12 @@ class AlertsController < ApplicationController
 	# GET /signature_sets
 	# GET /signature_sets.json
 	def index
+		@offset = (params[:offset] || 0).to_i
+		@limit = (params[:limit] || 100).to_i
 		if params[:time]
-			@alerts = Alert.where('updated_at >= ?', Time.at(params[:time].to_f)).order('updated_at DESC')
+			@alerts = Alert.where('updated_at >= ?', Time.at(params[:time].to_f)).offset(@offset).limit(@limit).order('updated_at DESC')
 		else
-			@alerts = Alert.order('updated_at DESC')
+			@alerts = Alert.order('updated_at DESC').offset(@offset).limit(@limit)
 		end
 
 		respond_to do |format|
