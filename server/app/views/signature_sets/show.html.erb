@@ -25,33 +25,31 @@ dlls = '<%= h(AvailableDll.all(:order => "name").map{|ad| ad.name}.join(',')) %>
 		Define the function and parameters for the signature.
 	</p>
 		<div class="overflowdiv">
-		<h3>Info</h3>
 	<form id="newform" onsubmit='return copyContent()'>
 		<input type="hidden" name="signature_set_id" value="<%= @signature_set.id %>"></input>
 		<table>
 		<thead></thead>
 		<tbody>
-			<tr><td><p class="dialog">Name</p></td><td colspan=3><input name="act[name]" type="text" class="wide" value="Signature 1" title="The displayed name of your signature"></input></td><td><p class="dialog">Notes</p></td></tr>
-			<tr><td><p class="dialog">Action</p></td><td><select id="actionSelect" name="act[action]" onchange="checkActionSelect()"><option value="ALERT">Alert</option><option value="BLOCK">Block</option><option value="KILLTHREAD">Kill thread</option><option value="KILLPROC">Kill process</option></select></td><td><p name="act[retval]">Return:</p></td><td><input name="act[retval]" type="text" value="0" title="Value to return"></input></td><td rowspan=3><textarea name="act[notes]" cols=50 rows=4></textarea></td></tr>
-			<tr><td><p class="dialog">Severity</p></td><td><select id="severitySelect" name="severity" onchange="$('#severityCustom').val($('#severitySelect').val());"><option value="0">None</option><option value="1000">Low</option><option value="2000">Medium</option><option value="3000">High</option><option value="4000">Critical</option></select></td><td><input id="severityCustom" name="act[severity]" type="text" value="0" size=5 title="The severity of a signature match on a scale of 0-4000 (or more if you're panicky)"></input></td></tr>
-			<tr><td><p class="dialog">Process</p></td><td colspan=2><input name="act[exepath]" class="wide" type="text" value="" title="Process name or path to match, in regular expression syntax. Leave blank to enable signature on any process"></input></td></tr>
+			<tr><td colspan=4><h3>Info</h3></td><td><p class="dialog">Notes</p></td></tr>
+			<tr><td><p class="dialog">Name</p></td><td colspan=3><input name="act[name]" type="text" class="wide" value="Signature 1" title="The displayed name of your signature"></input></td><td rowspan=4><textarea name="act[notes]" cols=50 rows=4></textarea></td></tr>
+			<tr><td><p class="dialog">Action</p></td><td><select id="actionSelect" name="act[action]" onchange="checkActionSelect()"><option value="ALERT">Alert</option><option value="BLOCK">Block</option><option value="KILLTHREAD">Kill thread</option><option value="KILLPROC">Kill process</option></select></td><td><p name="act[retval]">Return:</p></td><td><input name="act[retval]" type="text" value="0" title="Value to return" style="width:60px;float:right;"></input></td></tr>
+			<tr><td><p class="dialog">Severity</p></td><td><select id="severitySelect" name="severity" onchange="$('#severityCustom').val($('#severitySelect').val());"><option value="0">None</option><option value="1000">Low</option><option value="2000">Medium</option><option value="3000">High</option><option value="4000">Critical</option></select></td><td colspan=2><input id="severityCustom" name="act[severity]" type="text" value="0" size=5 title="The severity of a signature match on a scale of 0-4000 (or more if you're panicky)"></input></td></tr>
+			<tr><td><p class="dialog">Process</p></td><td colspan=3><input name="act[exepath]" class="wide" type="text" value="" title="Process name or path to match, in regular expression syntax. Leave blank to enable signature on any process"></input></td></tr>
 		</tbody>
 		</table>
-		<h3>Function</h3>
-		<table>
-		<thead></thead>
-		<tbody>
+		<table class="dialog">
+    <tbody id="functabbody">
+		<tr><td colspan=3><h3>Function</h3></td><td colspan=2 rowspan=4><pre id="decl"></pre></td></tr>
 			<tr><td><p class="dialog">DLL</p></td><td><select id="dllSelect" name="dll" 
 			onchange="dllChange();"></select></td><td><input id="dllCustom" name="dllCustom" 
-			type="text" value="custom dll" title="The DLL of the function you want to signature"></input></td>
-			<td rowspan="2"><pre id="decl"></pre></td></tr>
+			type="text" value="custom dll" title="The DLL of the function you want to signature"></input></td></tr>
 			<tr><td><p class="dialog">Function</p></td><td><select id="functionSelect" 
 			name="function" onchange="functionChange();"></select></td>
 			<td><input id="functionCustom" name="functionCustom" type="text" value="custom function" 
 			title="The function you want to signature"></input></td></tr>
+			<tr><td><h3>Parameters</h3></td></tr>
 		</tbody>
 		</table>
-		<h3>Parameters</h3>
 		<table class="dialog">
     <tbody id="parambody">
         <tr id="namerow">

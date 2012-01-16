@@ -50,9 +50,12 @@ window.addParam = function(myVal, arg) {
 	typeChange(currentNum, arg);
 };
 $('#addparameter').click(addParam);
-
+$('#removeparameter').click(removeParam);
+addParam();
+checkActionSelect();
+});
 //Remove the last relevant column from the parameter table
-window.removeParam = function() {
+function removeParam() {
 	var children = $('#namerow').children();
 	if(children.length <= minNameRowElements)
 		return;
@@ -62,10 +65,6 @@ window.removeParam = function() {
 			$(row).find('td:last').remove();
 	})
 }
-$('#removeparameter').click(removeParam);
-addParam();
-checkActionSelect();
-});
 function typeChange(i,arg){
 	if(!arg) arg = {argtype: 0};
 	var argtype = arg['argtype'];
@@ -249,6 +248,9 @@ function editAction(){
 function newAction(){
 	$('#modalTitle').html('New signature');
 	$('#new').overlay({load:true, fixed: false}).load();
+	//Fix the height of the notes pane
+	$('[name="act[notes]"]').height($('[name="act[exepath]"]').outerHeight()
+		+ $('[name="act[exepath]"]').offset().top - $('[name="act[name]"]').offset().top);
 	window.existing_sig_id = -1; //we're not editing
 }
 function closeOverlay(){
