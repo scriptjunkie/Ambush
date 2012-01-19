@@ -12,6 +12,7 @@ using namespace std;
 #include "wslre.h"
 #include "apihook.h"
 #include "reporting.h"
+#include "base_inject.h"
 
 ////////////////////////////// Globals //////////////////////////////////////
 
@@ -310,7 +311,7 @@ DWORD WINAPI CreateProcessInternalWHook(PVOID unknown1, LPCWSTR lpApplicationNam
 	// Now ensure appinit dlls are loaded (kinda rop style - call LoadAppInitDlls and return to the original entry point)
 	CONTEXT context;
 	context.ContextFlags = CONTEXT_FULL;
-	if(GetThreadContext(lpProcessInformation->hThread, &context) == ERROR_SUCCESS){
+	if(GetThreadContext(lpProcessInformation->hThread, &context) != FALSE){
 #ifdef _M_X64
 		if(WriteProcessMemory(lpProcessInformation->hProcess, (LPVOID)(context.Rsp - 8), 
 				&(context.Rip), 8, NULL) == ERROR_SUCCESS && LoadAppInitDllsAddr != NULL){
@@ -324,6 +325,8 @@ DWORD WINAPI CreateProcessInternalWHook(PVOID unknown1, LPCWSTR lpApplicationNam
 #endif
 		}
 		SetThreadContext(lpProcessInformation->hThread, &context);
+	}else{
+		dll_inject_load(lpProcessInformation->dwProcessId); // Try msf-style cross-arch inject
 	}
 	ResumeThread(lpProcessInformation->hThread);
 	return retval;

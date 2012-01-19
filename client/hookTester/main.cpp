@@ -44,7 +44,7 @@ int CALLBACK WinMain(HINSTANCE,HINSTANCE,LPSTR,int){
 	if(MessageBoxA(NULL,"CreateProcessW calc", "Hook tester", MB_YESNO) != IDNO)
 		CreateProcessW(NULL,cmdline,NULL,NULL,0,0,NULL,NULL,&start,&proc);
 	if(MessageBoxA(NULL,"WinExec calc", "Hook tester", MB_YESNO) != IDNO)
-		WinExec("calc",0);
+		WinExec("./calc.exe",0);
 	//Test killproc with sleepEx 1002
 	if(MessageBoxA(NULL,"SleepEx 1002", "Hook tester", MB_YESNO) != IDNO)
 		SleepEx(1002, FALSE);

@@ -168,6 +168,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\base_inject.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\NCodeHook.cpp"
 				>
 			</File>
@@ -235,6 +239,10 @@
 			</File>
 			<File
 				RelativePath=".\apihookx86.h"
+				>
+			</File>
+			<File
+				RelativePath=".\base_inject.h"
 				>
 			</File>
 			<File
