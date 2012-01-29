@@ -40,11 +40,11 @@ int CALLBACK WinMain(HINSTANCE,HINSTANCE,LPSTR,int){
 	memset(&start,0,sizeof(start));
 	memset(&proc,0,sizeof(proc));
 	wchar_t cmdline[100];
-	lstrcpyW(cmdline,L"C:\\Windows\\SysWoW64\\calc.exe");
-	if(MessageBoxA(NULL,"CreateProcessW calc", "Hook tester", MB_YESNO) != IDNO)
+	lstrcpyW(cmdline,L"ipconfig.exe");
+	if(MessageBoxA(NULL,"CreateProcessW ipconfig", "Hook tester", MB_YESNO) != IDNO)
 		CreateProcessW(NULL,cmdline,NULL,NULL,0,0,NULL,NULL,&start,&proc);
 	if(MessageBoxA(NULL,"WinExec calc", "Hook tester", MB_YESNO) != IDNO)
-		WinExec("./calc.exe",0);
+		WinExec("calc",0);
 	//Test killproc with sleepEx 1002
 	if(MessageBoxA(NULL,"SleepEx 1002", "Hook tester", MB_YESNO) != IDNO)
 		SleepEx(1002, FALSE);

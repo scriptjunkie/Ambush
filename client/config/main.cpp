@@ -156,8 +156,6 @@ bool getFile(HINTERNET connection, LPCWCHAR path, const char * filename){
 }
 //Downloads and verifies new signatures if possible
 void doUpdate(){
-	//Get config file
-	HOOKAPI_CONF *apiConf;
 	//Find configuration file from same binary directory as this file
 	char filename[1000];
 	DWORD size = GetModuleFileNameA(NULL, filename, sizeof(filename));
@@ -252,8 +250,8 @@ void doUpdate(){
 	if (hSession) WinHttpCloseHandle(hSession);
 }
 int main(int argc, char** argv){
-	if(argc != 2)
-		die("Api Hook config\nUsage: config [install|uninstall|update]");
+	if(argc < 2)
+		die("Api Hook config\nUsage: config [install|uninstall|update|server servername sigsetnum]");
 
 	//Get command
 	string command(argv[1]);
@@ -364,6 +362,20 @@ int main(int argc, char** argv){
 			removeReg(); //clean up
 			die("Error scheduling update task.");
 		}
+
+	}else if(command.compare("server") == 0 && argc == 4){
+		HKEY settingsKey;
+		RegCreateKeyExA(HKEY_LOCAL_MACHINE, "SOFTWARE\\Scriptjunkie\\Ambush", 0, NULL, 0, 
+			KEY_SET_VALUE|KEY_WOW64_64KEY, NULL, &settingsKey, NULL);
+		//Set server name/IP
+		if(RegSetValueExA(settingsKey, "SignatureServer", NULL, REG_SZ, (PBYTE)argv[2], lstrlenA(argv[2])) != ERROR_SUCCESS)
+			cerr << "Could not set signature server " << GetLastError() << endl;
+
+		//Set signature set
+		DWORD length = sizeof(DWORD);
+		DWORD sigset = atoi(argv[3]);
+		if(RegSetValueExA(settingsKey, "SignatureSet", NULL, REG_DWORD, (PBYTE)&sigset, sizeof(sigset)) != ERROR_SUCCESS)
+			cerr << "Could not set signature set " << GetLastError() << endl;
 
 	}else if(command.compare("uninstall") == 0 || command.compare("/Uninstall") == 0){ //UNINSTALL
 		//Replace keys

@@ -33,8 +33,6 @@ hookArgFunc getHookArg = NULL;
 OneArgFunc setEax = NULL;
 //Helper function to get a pointer to the PEB
 NoArgFunc getPEB = NULL;
-//Forces loading of appinit DLLs
-NoArgFunc LoadAppInitDllsAddr = NULL;
 
 //For allocating RWX memory,
 HANDLE rwxHeap = NULL;
@@ -305,29 +303,9 @@ DWORD WINAPI CreateProcessInternalWHook(PVOID unknown1, LPCWSTR lpApplicationNam
 		bInheritHandles, dwCreationFlags | CREATE_SUSPENDED, lpEnvironment, lpCurrentDirectory, lpStartupInfo, lpProcessInformation, unknown2);
 
 	// If something weird or bad or broken is happening, don't continue
-	if(alreadySuspended || retval == 0 || LoadAppInitDllsAddr == NULL)
+	if(alreadySuspended || retval == 0)
 		return retval;
-
-	// Now ensure appinit dlls are loaded (kinda rop style - call LoadAppInitDlls and return to the original entry point)
-	CONTEXT context;
-	context.ContextFlags = CONTEXT_FULL;
-	if(GetThreadContext(lpProcessInformation->hThread, &context) != FALSE){
-#ifdef _M_X64
-		if(WriteProcessMemory(lpProcessInformation->hProcess, (LPVOID)(context.Rsp - 8), 
-				&(context.Rip), 8, NULL) == ERROR_SUCCESS && LoadAppInitDllsAddr != NULL){
-			context.Rip = (SIZE_T)LoadAppInitDllsAddr;
-			context.Rsp -= 8;
-#else
-		if(WriteProcessMemory(lpProcessInformation->hProcess, (LPVOID)(context.Esp - 4), 
-				&(context.Eip), 4, NULL) != ERROR_SUCCESS && LoadAppInitDllsAddr != NULL){
-			context.Eip = (SIZE_T)LoadAppInitDllsAddr;
-			context.Esp -= 4;
-#endif
-		}
-		SetThreadContext(lpProcessInformation->hThread, &context);
-	}else{
-		dll_inject_load(lpProcessInformation->dwProcessId); // Try msf-style cross-arch inject
-	}
+	dll_inject_load(lpProcessInformation->dwProcessId); // Try msf-style cross-arch inject
 	ResumeThread(lpProcessInformation->hThread);
 	return retval;
 }
@@ -385,6 +363,26 @@ BOOL prepHookApi(){
 	#endif
 	dllHandles = (HMODULE*)HeapAlloc(rwHeap, 0, 32 * sizeof(HMODULE));
 
+	//Find configuration file from same binary directory as this file
+	char filename[1000];
+	DWORD size = GetModuleFileNameA(myDllHandle, filename, sizeof(filename));
+	for(size -= 1; filename[size] != '\\' && size != 0; size--)
+		filename[size] = 0;
+	strcat_s(filename, "sig.dat"); // yes, I know this is VS-specific
+
+	//Read configuration file
+	HANDLE sigFileHandle = CreateFileA(filename,GENERIC_READ,
+		FILE_SHARE_READ|FILE_SHARE_WRITE,NULL,OPEN_EXISTING,0,0);
+	DWORD dontcare;
+	DWORD fileSize = GetFileSize(sigFileHandle,NULL);
+	if(fileSize == -1 || sigFileHandle == INVALID_HANDLE_VALUE ||
+		(apiConf = (HOOKAPI_CONF*)HeapAlloc(rwHeap,0,fileSize)) == NULL ||
+		ReadFile(sigFileHandle,apiConf,fileSize,&dontcare,NULL) == FALSE){
+			CloseHandle(sigFileHandle);
+			return FALSE;
+	}
+	CloseHandle(sigFileHandle);
+
 	//Setup getHookArg()
 	getHookArg = (hookArgFunc)HeapAlloc(rwxHeap, 0, sizeof(GET_HOOK_ARG));
 	MoveMemory((PCHAR)getHookArg, GET_HOOK_ARG, sizeof(GET_HOOK_ARG)); 
@@ -407,7 +405,6 @@ BOOL prepHookApi(){
 
 	HMODULE colonel = GetModuleHandleA("kernel32");
 	//Hook LoadLibrary and CreateProcessInternal calls
-	LoadAppInitDllsAddr = (NoArgFunc)GetProcAddress(colonel, "LoadAppInitDlls");
 	CreateProcessInternalWReal = hooker->createHook<CreateProcessInternalWFunc>((CreateProcessInternalWFunc)GetProcAddress(
 		colonel, "CreateProcessInternalW"), (CreateProcessInternalWFunc)CreateProcessInternalWHook);
 
@@ -421,25 +418,6 @@ BOOL prepHookApi(){
 	makeHook(GetProcAddress(colonel, "LoadLibraryExA"), popRet3arg, &LoadLibraryHook);
 	makeHook(GetProcAddress(colonel, "LoadLibraryExW"), popRet3arg, &LoadLibraryHook);
 
-	//Find configuration file from same binary directory as this file
-	char filename[1000];
-	DWORD size = GetModuleFileNameA(myDllHandle, filename, sizeof(filename));
-	for(size -= 1; filename[size] != '\\' && size != 0; size--)
-		filename[size] = 0;
-	strcat_s(filename, "sig.dat"); // yes, I know this is VS-specific
-
-	//Read configuration file
-	HANDLE sigFileHandle = CreateFileA(filename,GENERIC_READ,
-		FILE_SHARE_READ|FILE_SHARE_WRITE,NULL,OPEN_EXISTING,0,0);
-	DWORD dontcare;
-	DWORD fileSize = GetFileSize(sigFileHandle,NULL);
-	if(fileSize == -1 || sigFileHandle == INVALID_HANDLE_VALUE ||
-		(apiConf = (HOOKAPI_CONF*)HeapAlloc(rwHeap,0,fileSize)) == NULL ||
-		ReadFile(sigFileHandle,apiConf,fileSize,&dontcare,NULL) == FALSE){
-			CloseHandle(sigFileHandle);
-			return FALSE;
-	}
-	CloseHandle(sigFileHandle);
 	return TRUE;
 }
 
