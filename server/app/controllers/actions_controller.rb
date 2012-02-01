@@ -32,56 +32,18 @@ class ActionsController < ApplicationController
   # Makes a new signature
 	def create
 		#Get or create DLL
-		dll = AvailableDll.find(:first, :conditions => {:name => params[:dllCustom]})
-		if dll == nil
-			dll = AvailableDll.new(:name => params[:dllCustom])
-			dll.save
+		dll = AvailableDll.find_or_create(params[:dllCustom])
+
+		#Get or create function
+		funcparams = []
+		currentParam = 0
+		while params["name#{currentParam}"]
+			funcparams << {'name' => params["name#{currentParam}"], 'paramtype' => params["type#{currentParam}"],
+					'type' => params["subtype#{currentParam}"], 'blobval' => params["blobval#{currentParam}"]}
+			currentParam += 1
 		end
-
-		#Get function
-		newFunc = false
-		func = AvailableFunction.find(:first, :conditions => 
-				{'available_dll_id' => dll.id, 'name' => params[:functionCustom]})
-
-		#Check if we need to make a new one - if it wasn't found or params have changed
-		types = ['DONTCARE', 'DWORD', 'DWORDRANGE', 'CSTRING', 'WCSTRING', 'MEM', 'BITMASK', 'BLOB', 'DWORD_NEQ']
-		if func != nil
-			parameters = func.parameters.all(:order => 'num')
-			changed = false
-			currentParam = 0
-			while params["name#{currentParam}"]
-				if currentParam >= parameters.length or parameters[currentParam].name != params["name#{currentParam}"] or
-						parameters[currentParam].paramtype != types.index(params["type#{currentParam}"])
-					changed = true
-					break
-				end
-				currentParam += 1
-			end
-		else
-			changed = true
-		end
-
-		if changed   #make a new func
-			func = AvailableFunction.new(:name => params[:functionCustom], :available_dll => dll)
-			func.save
-
-			#add params
-			currentParam = 0
-			while params["name#{currentParam}"] != nil
-				p = Parameter.new(:name => ActionController::Base.helpers.strip_tags(params["name#{currentParam}"]), 
-						:num => currentParam+1, :available_function => func)
-				p.paramtype = types.index(params["type#{currentParam}"])
-				raise "Error - invalid parameter type; try one of these:\n#{types.inspect}" if p.paramtype == nil
-
-				if params["type#{currentParam}"] == 'BLOB' #must give blob length
-					p.arg = params["blobval#{currentParam}"] if params["subtype#{currentParam}"] == 'ARG'
-					p.size = params["blobval#{currentParam}"] if params["subtype#{currentParam}"] == 'VAL'
-				end
-				p.save
-				currentParam += 1
-			end
-		end
-
+		func = AvailableFunction.find_or_create(params[:functionCustom], funcparams, dll)
+		
 		#Create action
 		a = Action.new(params[:act])
 		if params[:act][:retval][0..1] == '0x'
@@ -92,11 +54,9 @@ class ActionsController < ApplicationController
 		a.setAction params[:act][:action]
 
 		#Return address conditions
-		if params[:retprotectType] != 'DONTCARE'
+		if params[:retprotectType] != 'Ignore'
 			modeParam = params["subval-1"]
-			memmode = @@memmodes[modeParam]
-			memmode = modeParam.to_i if memmode == nil
-			a.retprotectMode = memmode
+			a.retprotectMode = @@memmodes[modeParam] || modeParam.to_i
 		else
 			a.retprotectMode = 0
 		end
@@ -104,6 +64,7 @@ class ActionsController < ApplicationController
 		a.save
 
 		#Create args
+		types = ['Ignore', 'Integer', 'Range', 'C string', 'WC string', 'Pointer', 'Bitmask', 'Blob', 'Not']
 		parameters = func.parameters.all(:order => 'num')
 		currentParam = 0
 		while params["name#{currentParam}"] != nil
@@ -116,14 +77,12 @@ class ActionsController < ApplicationController
 			raise "Error - invalid argument type; try one of these:\n#{types.inspect}" if arg.argtype == nil
 
 			#get val
-			arg.regExp = params["val#{currentParam}"] if ['CSTRING', 'WCSTRING', 'BLOB'].index(types[arg.argtype])
-			arg.setval1(params["val#{currentParam}"]) if ['DWORD', 'DWORDRANGE', 'MEM', 'BITMASK', 'DWORD_NEQ'].index(givenType)
-			arg.setval2(params["subval#{currentParam}"]) if ['DWORDRANGE', 'BITMASK'].index(givenType)
-			if(givenType == 'MEM')
+			arg.regExp = params["val#{currentParam}"] if ['C string', 'WC string', 'Blob'].index(types[arg.argtype])
+			arg.setval1(params["val#{currentParam}"]) if ['Integer', 'Range', 'Pointer', 'Bitmask', 'Not'].index(givenType)
+			arg.setval2(params["subval#{currentParam}"]) if ['Ranger', 'Bitmask'].index(givenType)
+			if(givenType == 'Pointer')
 				modeParam = params["subval#{currentParam}"]
-				memmode = @@memmodes[modeParam]
-				memmode = modeParam.to_i if memmode == nil
-				arg.setval2(memmode)
+				arg.setval2(@@memmodes[modeParam] || modeParam.to_i)
 			end
 
 			#must give blob length
@@ -137,9 +96,11 @@ class ActionsController < ApplicationController
 			arg.save
 			currentParam += 1
 		end
+
 		#we changed the sig set
 		a.signature_set.markchanged
 
+		#we're done
 		respond_with({:message => 'Signature successfully created!', 
 				:row => '<tr><th><input type="checkbox" id="' + a.id.to_s + 
 				'_box"></input></th><th scope="row" id="r100">' + 

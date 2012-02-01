@@ -1,10 +1,9 @@
 <% content_for :unwrapped do %>
 <%= javascript_include_tag 'sorttable.js' %>
-<div class="modal" id="new">
+<div class="modal small" id="new">
 	<h2 id="modalTitle">Signature set - details</h2>
 	<h3>Info</h3>
 	<form id="newform" onsubmit='return submitNewSig()'>
-		
 		<table>
 			<tbody>
 				<tr><td><p class="dialog">Field</p></td><td><p class="dialog">Value</p></td></tr>
@@ -12,12 +11,13 @@
 				<tr><td><p class="dialog">Version</p></td><td><input id="signature_set_version" name="signature_set[version]" size="30" type="text" value="" title="" /></td></tr>
 			</tbody>
 		</table>
-
 		<input type="submit" value="Submit"></input>
 		<input type="submit" value="Close" onclick="closeOverlay();return false;"></input>
 	</form>
 </div>
 <% end %>
+
+<%= render 'import' %>
 
 <div class="content">
 <table class="sortable" style="width: 100%">
@@ -32,5 +32,6 @@
 </table>
 </div>
 <div class="content">
- <span class="right"><span class="button" onclick="newSigSet()">New</span></span>
+<span class="left"><span class="button" onclick="importSigSet()">Import</span></span>
+<span class="right"><span class="button" onclick="newSigSet()">New</span></span>
 </div>

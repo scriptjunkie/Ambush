@@ -8,6 +8,7 @@ Ambush::Application.routes.draw do
   match "signature_sets/:id/adm" => "signature_sets#adm"
   match "signature_sets/:id/compiled" => "signature_sets#compiled"
   match "signature_sets/:id/signature" => "signature_sets#signature"
+  match "signature_sets/:id/yaml" => "signature_sets#yaml"
   match "compiled" => "signature_sets#compiled", :id => 1
   match "alerts/clear" => "alerts#clear"
 

@@ -20,6 +20,7 @@
 		<tr><td>Report server</td><td><%= text_field :signature_set, :report %></td></tr>
 		<tr><td>Version</td><td><%= text_field :signature_set, :version %></td></tr>
 		<tr><td>ADM file</td><td><a onclick="getAdm(<%= @signature_set.id %>)">Download</a></td></tr>
+		<tr><td>Export as YAML</td><td><a href="/signature_sets/<%= @signature_set.id %>/yaml">Download</a></td></tr>
 	</tbody>
 	<tfoot><tr><td colspan="2">  </td></tr></tfoot>
 </table>

@@ -65,7 +65,7 @@ dlls = '<%= h(AvailableDll.all(:order => "name").map{|ad| ad.name}.join(',')) %>
         <tr id="restrictiontyperow">
             <td><p class="dialog">Restriction</p></td>
             <td><select id="sels-1" name="retprotectType" onchange="subtypeChange(-1)">
-            <option value="DONTCARE">Ignore</option><option value="MEM">Memory Protection</option></select></td>
+            <option value="Ignore">Ignore</option><option value="Pointer">Memory Protection</option></select></td>
         </tr>
         <tr id="restrictionrow">
             <td><p class="dialog">Value</p></td>
@@ -74,13 +74,14 @@ dlls = '<%= h(AvailableDll.all(:order => "name").map{|ad| ad.name}.join(',')) %>
     </tbody>
 </table>
 		</div>
-
 		<input type="submit" value="Submit"></input>
 		<input type="submit" value="Close" onclick="closeOverlay();return false;"></input>
 	</form>
 	<br />
 </div>
 <% end %>
+
+<%= render 'import' %>
 
 <div class="content">
 <div class="caption">Signature Set <%= @signature_set.id %></div>
@@ -101,4 +102,4 @@ dlls = '<%= h(AvailableDll.all(:order => "name").map{|ad| ad.name}.join(',')) %>
 
 </div>
 <div class="content"><span class="left"><span class="button" rel="#delete">Delete</span>
-<span class="button" onclick="editAction()">Edit</span></span> <span class="right"><span class="button" onclick="newAction()">New</span></span> </div>
+<span class="button" onclick="editAction()">Edit</span></span> <span class="right"><span class="button" onclick="importSigSet(<%=@signature_set.id %>)">Import</span> <span class="button" onclick="newAction()">New</span></span> </div>

@@ -4,6 +4,14 @@ class Action < ActiveRecord::Base
 	has_many :arguments, :dependent => :destroy
 	has_many :alerts, :dependent => :destroy
 	@@actions = ['ALERT', 'BLOCK', 'KILLPROC', 'KILLTHREAD']
+	@@memconstants = {0x10 => 'PAGE_EXECUTE', 0x20 => 'PAGE_EXECUTE_READ', 
+			0x40 => 'PAGE_EXECUTE_READWRITE', 0x80 => 'PAGE_EXECUTE_WRITECOPY', 
+			0x1 => 'PAGE_NOACCESS', 0x2 => 'PAGE_READONLY', 
+			0x4 => 'PAGE_READWRITE', 0x8 => 'PAGE_WRITECOPY'}
+	@@memmodes = {'PAGE_EXECUTE' => 0x10, 'PAGE_EXECUTE_READ' => 0x20, 
+			'PAGE_EXECUTE_READWRITE' => 0x40, 'PAGE_EXECUTE_WRITECOPY' => 0x80, 
+			'PAGE_NOACCESS' => 0x1, 'PAGE_READONLY' => 0x2, 
+			'PAGE_READWRITE' => 0x4, 'PAGE_WRITECOPY' => 0x8}
 
 	def actionStr
 		@@actions[self.action]
@@ -15,6 +23,53 @@ class Action < ActiveRecord::Base
 
 	def setAction(actstr)
 		self.action = @@actions.index(actstr)
+	end
+
+	def simplified
+		defined = self.available_function.decl != nil
+		simple = {'name' => self.name, 'action' => @@actions[self.action], 'severity' => self.severity, 
+				'function' => self.available_function.name, 'dll' => self.available_function.available_dll.name, 
+				'arguments' => self.arguments.map{|a| a.simplified(defined)} }
+		simple['retval'] = self.retval if self.action == 1
+		if self.retprotectMode != 0
+			if @@memconstants.has_key? self.retprotectMode
+				simple['retprotectMode'] = @@memconstants[self.retprotectMode]
+			else
+				simple['retprotectMode'] = self.retprotectMode
+			end
+		end
+		simple
+	end
+
+	def self.from_simplified(simple, set)
+		#Get or create DLL
+		dll = AvailableDll.find_or_create(simple['dll'])
+
+		#Get or create function
+		func = AvailableFunction.find_or_create(simple['function'], simple['arguments'], dll)
+
+		#Create action
+		act = Action.new(:action => @@actions.index(simple['action']), :available_function_id => func.id,
+				:severity => simple['severity'], :name => simple['name'], :signature_set_id => set.id)
+
+		#Return address conditions
+		if simple['retprotectMode']
+			memmode = @@memmodes[simple['retprotectMode']]
+			memmode = simple['retprotectMode'].to_i if memmode == nil
+			act.retprotectMode = memmode
+		else
+			act.retprotectMode = 0
+		end
+		act.retprotectType = 0
+		act.save
+
+		#Create args
+		parameters = func.parameters.all(:order => 'num')
+		simple['arguments'].each_with_index do |simplearg, index|
+			Argument.from_simplified(simplearg, parameters[index], act)
+		end
+		#we changed the sig set
+		act.signature_set.markchanged
 	end
 
 	def compiled

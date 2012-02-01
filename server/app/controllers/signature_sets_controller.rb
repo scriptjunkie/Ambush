@@ -19,6 +19,12 @@ class SignatureSetsController < ApplicationController
 		@signature_set = SignatureSet.find(params[:id])
 		send_data @signature_set.compiled
 	end
+
+	# GET /signature_sets/1/yaml
+	def yaml
+		require 'yaml'
+		send_data SignatureSet.find(params[:id]).to_yaml, { :type => 'text/plain'.freeze, :disposition => 'inline'.freeze }
+	end
  
 	# GET /signature_sets/1/signature
 	def signature
@@ -64,6 +70,14 @@ class SignatureSetsController < ApplicationController
 	# POST /signature_sets
 	# POST /signature_sets.json
 	def create
+		if params[:imported]
+			fin = params[:imported].tempfile
+			contents = fin.read fin.stat.size
+			fin.close
+			@signature_set = SignatureSet.from_simplified(YAML::load(contents),  params[:id])
+			redirect_to @signature_set
+			return
+		end
 		@signature_set = SignatureSet.new(params[:signature_set])
 		@signature_set.save
 		ids = @signature_set.id.to_s

@@ -1,6 +1,15 @@
 class AvailableDll < ActiveRecord::Base
 	has_many :available_functions, :dependent => :destroy
 
+	def self.find_or_create(name)
+		dll = AvailableDll.find(:first, :conditions => {:name => name})
+		if dll == nil
+			dll = AvailableDll.new(:name => name)
+			dll.save
+		end
+		dll
+	end
+
 	def compiled(ssid)
 		dname = self.name.downcase + ("\x00"*(4-(self.name.length % 4)))
 		funcs = self.available_functions.joins(:actions).where('actions.signature_set_id' => ssid)

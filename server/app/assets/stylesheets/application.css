@@ -194,7 +194,9 @@ border-radius:6px;
 box-shadow: 0 0 90px #000;
 z-index:1;
 }
-
+.small{
+width:auto;
+}
 .modal h2, h3, .login h2  {
 margin:0px;
 padding:10px 0 10px 45px;

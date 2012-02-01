@@ -107,6 +107,32 @@ class SignatureSet < ActiveRecord::Base
 		dgst
 	end
 
+	def simplified
+		{'report' => self.report, 'version' => self.version, 'actions' => self.actions.map{|a| a.simplified} }
+	end
+
+	def self.from_simplified(simple, setid)
+		if setid
+			@signature_set = SignatureSet.find(setid)
+		else
+			@signature_set = SignatureSet.new(:report => simple['report'], :version => simple['version'])
+			@signature_set.save
+		end
+		simple['actions'].each do |act|
+			begin
+				Action.from_simplified(act, @signature_set)
+			rescue Exception => e
+				Rails.logger.error e
+				Rails.logger.error e.backtrace
+			end
+		end
+		@signature_set
+	end
+
+	def to_yaml
+		self.simplified.to_yaml
+	end
+
 	def getDefaultIp
 		begin
 			require 'socket'

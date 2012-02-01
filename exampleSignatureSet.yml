@@ -1,0 +1,255 @@
+---
+report: 192.168.1.11
+version: 1.0
+actions:
+- name: WinExec
+  action: ALERT
+  severity: 2000
+  function: WinExec
+  dll: Kernel32.dll
+  arguments:
+  - type: Ignore
+  - type: Ignore
+- name: ! 'Open Remote '
+  action: BLOCK
+  severity: 1000
+  function: OpenSCManagerA
+  dll: Advapi32.dll
+  arguments:
+  - type: C string
+    expression: ^..*$
+  - type: Ignore
+  - type: Ignore
+  retval:
+- name: DEP Policy Disable
+  action: ALERT
+  severity: 2000
+  function: SetProcessDEPPolicy
+  dll: Kernel32.dll
+  arguments:
+  - type: Integer
+    val: 0
+- name: Hook A
+  action: ALERT
+  severity: 2000
+  function: SetWindowsHookExA
+  dll: User32.dll
+  arguments:
+  - type: Ignore
+  - type: Ignore
+  - type: Integer
+    val: 0
+  - type: Ignore
+- name: Hook W
+  action: ALERT
+  severity: 2000
+  function: SetWindowsHookExW
+  dll: User32.dll
+  arguments:
+  - type: Ignore
+  - type: Ignore
+  - type: Integer
+    val: 0
+  - type: Ignore
+- name: Stager - Winsock
+  action: ALERT
+  severity: 2000
+  function: recv
+  dll: Ws2_32.dll
+  arguments:
+  - type: Ignore
+  - type: Pointer
+    mask type: ANY
+    mask: 64
+  - type: Ignore
+  - type: Ignore
+- name: Process Injection - WPM
+  action: ALERT
+  severity: 2000
+  function: WriteProcessMemory
+  dll: Kernel32.dll
+  arguments:
+  - type: Not
+    val: -1
+  - type: Ignore
+  - type: Ignore
+  - type: Ignore
+  - type: Ignore
+- name: Stager - Wininet
+  action: ALERT
+  severity: 2000
+  function: InternetReadFile
+  dll: Wininet.dll
+  arguments:
+  - type: Ignore
+  - type: Pointer
+    mask type: ANY
+    mask: 64
+  - type: Ignore
+  - type: Ignore
+- name: Process Injection - Open Proc
+  action: ALERT
+  severity: 2000
+  function: OpenProcess
+  dll: Kernel32.dll
+  arguments:
+  - type: Bitmask
+    mask type: ANY
+    mask: 2
+  - type: Ignore
+  - type: Ignore
+- name: Process Injection - Remote Thread
+  action: ALERT
+  severity: 2000
+  function: CreateRemoteThread
+  dll: Kernel32.dll
+  arguments:
+  - type: Not
+    val: -1
+  - type: Ignore
+  - type: Ignore
+  - type: Ignore
+  - type: Ignore
+  - type: Ignore
+  - type: Ignore
+- name: Process Injection - Suspended
+  action: ALERT
+  severity: 2000
+  function: CreateProcessA
+  dll: Kernel32.dll
+  arguments:
+  - type: Ignore
+  - type: Ignore
+  - type: Ignore
+  - type: Ignore
+  - type: Ignore
+  - type: Bitmask
+    mask type: ANY
+    mask: 4
+  - type: Ignore
+  - type: Ignore
+  - type: Ignore
+  - type: Ignore
+- name: Process Injection - SuspendedW
+  action: ALERT
+  severity: 2000
+  function: CreateProcessW
+  dll: Kernel32.dll
+  arguments:
+  - type: Ignore
+  - type: Ignore
+  - type: Ignore
+  - type: Ignore
+  - type: Ignore
+  - type: Bitmask
+    mask type: ANY
+    mask: 4
+  - type: Ignore
+  - type: Ignore
+  - type: Ignore
+  - type: Ignore
+- name: Shellcode - CreateProcessA
+  action: KILLTHREAD
+  severity: 3000
+  function: CreateProcessA
+  dll: Kernel32.dll
+  arguments:
+  - type: Ignore
+  - type: Ignore
+  - type: Ignore
+  - type: Ignore
+  - type: Ignore
+  - type: Ignore
+  - type: Ignore
+  - type: Ignore
+  - type: Ignore
+  - type: Ignore
+  retprotectMode: PAGE_EXECUTE_READWRITE
+- name: Stager - Wininet HTTPS A
+  action: ALERT
+  severity: 2000
+  function: InternetSetOptionA
+  dll: Wininet.dll
+  arguments:
+  - type: Ignore
+  - type: Integer
+    val: 31
+  - type: Blob
+    size argument: 4
+    size: -1
+    expression: ^\x80\x33
+  - type: Ignore
+- name: Stager - Wininet HTTPS
+  action: ALERT
+  severity: 2000
+  function: InternetSetOptionW
+  dll: Wininet.dll
+  arguments:
+  - type: Ignore
+  - type: Integer
+    val: 31
+  - type: Blob
+    size argument: 4
+    size: -1
+    expression: ^\x80\x33
+  - type: Ignore
+- name: Stager - Wininet HTTPS Request
+  action: BLOCK
+  severity: 0
+  function: HttpOpenRequestA
+  dll: Wininet.dll
+  arguments:
+  - type: Ignore
+  - type: Ignore
+  - type: Ignore
+  - type: Ignore
+  - type: Ignore
+  - type: Ignore
+  - type: Bitmask
+    mask type: ALL
+    mask: 8401408
+  - type: Ignore
+  retval:
+- name: Test - SleepEx
+  action: BLOCK
+  severity: 1000
+  function: SleepEx
+  dll: Kernel32.dll
+  arguments:
+  - type: Integer
+    val: 1001
+  - type: Ignore
+  retval:
+- name: Remote Control - keybd
+  action: ALERT
+  severity: 2000
+  function: keybd_event
+  dll: User32.dll
+  arguments:
+  - type: Ignore
+  - type: Ignore
+  - type: Ignore
+  - type: Ignore
+- name: Down/exec URL download
+  action: BLOCK
+  severity: 2000
+  function: URLDownloadToFileA
+  dll: Urlmon.dll
+  arguments:
+  - type: Ignore
+    name: pCaller
+    paramtype: Integer
+  - type: Ignore
+    name: szURL
+    paramtype: C string
+  - type: Ignore
+    name: szFileName
+    paramtype: C string
+  - type: Ignore
+    name: dwReserved
+    paramtype: Integer
+  - type: Ignore
+    name: lpfnCB
+    paramtype: Integer
+  retval: 0
+...
