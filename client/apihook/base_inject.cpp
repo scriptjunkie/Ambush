@@ -442,8 +442,6 @@ DWORD inject_via_remotethread(HANDLE hProcess, DWORD dwDestinationArch, LPVOID l
  */
 BOOL inject_dll( DWORD dwPid, DWORD pidArch, LPVOID lpBuffer, DWORD dwLength ){
 	BOOL dwResult                 = TRUE;
-	DWORD dwNativeArch             = PROCESS_ARCH_UNKNOWN;
-	LPVOID lpRemoteCommandLine     = NULL;
 	HANDLE hProcess                = NULL;
 	LPVOID lpRemoteLibraryBuffer   = NULL;
 
@@ -627,7 +625,6 @@ BOOL injectPrep(){
 DWORD dll_inject_load( DWORD dwPid ){
 	DWORD dwResult     = ERROR_ACCESS_DENIED;
 	DWORD dwPidArch    = PROCESS_ARCH_UNKNOWN;
-	DWORD dwDllArch    = PROCESS_ARCH_UNKNOWN;
 	LPVOID lpDllBuffer = NULL;
 	DWORD dwDllLength  = 0;
 

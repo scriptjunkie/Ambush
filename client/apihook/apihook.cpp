@@ -27,6 +27,9 @@ HMODULE myDllHandle; //my DLL base
 map<void*, slre*> compiledSignatures; //for regex signatures
 char* reportPipe;
 
+//Stores a TLS slot # for our boolean to determine whether to enable alerts
+DWORD enableAlertsSlot;
+
 //Function to get the original function and signature passed to hook0
 hookArgFunc getHookArg = NULL;
 //Helper function to return a value from a hook, used with stackFixups
@@ -218,6 +221,11 @@ void* hook0 (void* arg0){
 	HOOKAPI_FUNC_CONF* conf = (HOOKAPI_FUNC_CONF*)hookArgs[0]; //get configuration
 	NoArgFunc retfunc = stackFixups[conf->numArgs];
 
+	if(!alertsEnabled()){ // If alerts are disabled, ignore configuration
+		setEax(callApi(&arg0, (void*)conf->numArgs, hookArgs[1]));
+		return retfunc();
+	}
+
 	//Evaluate each action - PRE
 	HOOKAPI_ACTION_CONF* action = functionConfActions(conf);
 	for(unsigned int i = 0; i < conf->numActions; i++){
@@ -305,8 +313,11 @@ DWORD WINAPI CreateProcessInternalWHook(PVOID unknown1, LPCWSTR lpApplicationNam
 	// If something weird or bad or broken is happening, don't continue
 	if(alreadySuspended || retval == 0)
 		return retval;
+	
+	disableAlerts();
 	dll_inject_load(lpProcessInformation->dwProcessId); // Try msf-style cross-arch inject
 	ResumeThread(lpProcessInformation->hThread);
+	enableAlerts();
 	return retval;
 }
 
@@ -350,11 +361,15 @@ BOOL makeHook(void* origProcAddr, void* farg, void* hook){
 }
 
 //Prepares some memory items we'll need before calling makeHook on an arbitrary function
-//and loads configuration into memory
+//and loads configuration into memory. THIS IS RUN IN DLLMAIN AND CANNOT LOAD LIBRARIES!
 BOOL prepHookApi(){
+	//Setup TLS alert enable/disable (disabled by default)
+	setupAlertsDisabled();
+
 	//get heaps and allocate dllHandles list
 	rwHeap = GetProcessHeap();
 	rwxHeap = HeapCreate(HEAP_CREATE_ENABLE_EXECUTE,0,0);
+
 	//Our DLL-wide hooker, per-arch
 	#ifdef _M_X64
 	hooker = new NCodeHook<ArchitectureX64> (false,rwxHeap);
@@ -430,7 +445,7 @@ BOOL hookDllApi(HMODULE dllHandle){
 	//Check if we've seen it already
 	for(size_t i = 0; i < dllHandlesHooked; i++)
 		if(dllHandles[i] == dllHandle)
-			return true;
+			return TRUE;
 	if(dllHandlesHooked != 0 && (dllHandlesHooked % 32) == 0){  //Out of mem
 		void* newHandles = HeapAlloc(rwHeap, 0, (dllHandlesHooked + 32) * sizeof(HMODULE)); //get more
 		MoveMemory(newHandles, dllHandles, dllHandlesHooked * sizeof(HMODULE)); // copy over
@@ -469,12 +484,16 @@ BOOL hookDllApi(HMODULE dllHandle){
 	if(found == false)
 		return FALSE;
 
+	//Don't allow alerts here
+	disableAlerts();
+
 	//Hook each function conf
 	HOOKAPI_FUNC_CONF* function = dllConfFunctions(dllConf);
 	for(unsigned int i = 0; i < dllConf->numFunctions; i++){
 		makeHook(GetProcAddress(dllHandle, function->name), function, &hook0);
 		function = nextFunctionConf(function); //next
 	}
+	enableAlerts(); //back to normal
 	return TRUE;
 }
 
@@ -496,6 +515,8 @@ DWORD WINAPI postInit(PVOID){
 
 //And this is our main function
 BOOL WINAPI DllMain(HINSTANCE instance, DWORD fdwReason, LPVOID){
+	if(fdwReason == DLL_THREAD_ATTACH)
+		enableAlerts();
 	if(fdwReason != DLL_PROCESS_ATTACH)
 		return TRUE;
 	myDllHandle = instance;
@@ -505,5 +526,6 @@ BOOL WINAPI DllMain(HINSTANCE instance, DWORD fdwReason, LPVOID){
 	hookAllDlls(); //Hook the ones we have now
 	//And check again after all dlls are initialized
 	CreateThread(NULL, 0, &postInit, NULL, 0, NULL); //This will run after all DllMains
+	enableAlerts();
 	return TRUE;
 }

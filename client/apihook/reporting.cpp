@@ -110,6 +110,9 @@ BOOL checkIn(){
 
 //Endlessly polls queue for new alerts, sending them to the HTTP server
 DWORD WINAPI HTTPthread(AlertQueueNode* argnode){
+	// Alert handling - disable alerts to prevent recursion
+	disableAlerts();
+
 	// Use WinHttpOpen to obtain a session handle.
 	if(loadWinHTTP() == FALSE)
 		return FALSE;
@@ -156,8 +159,8 @@ DWORD WINAPI HTTPthread(AlertQueueNode* argnode){
 				if(alertCount == max_alerts)
 					break; //We can't take any more!
 			}
-			GetSystemTimeAsFileTime((LPFILETIME)&currentTime);
-			msDifference = (currentTime.QuadPart - lastAlert.QuadPart) / 10000;
+			GetSystemTimeAsFileTime((LPFILETIME)&currentTime); // must be reached on first loop pass
+			msDifference = (DWORD)((currentTime.QuadPart - lastAlert.QuadPart) / 10000);
 			if(msDifference > ALERT_INTERVAL) //20 seconds
 				break;
 		} while(WaitForSingleObject(lastnode->eventHandle, ALERT_INTERVAL - msDifference) == WAIT_OBJECT_0);
@@ -200,6 +203,10 @@ BOOL runLocalServer(HANDLE servPipe){
 		FILE_ATTRIBUTE_HIDDEN|FILE_ATTRIBUTE_SYSTEM,NULL);
 	if(outputFile == INVALID_HANDLE_VALUE)
 		return 0; //we can't store our messages!
+
+	// Ok, we're good. Now disable alerts from this thread to prevent recursive alerts.
+	disableAlerts();
+
 	DWORD reply = 0x12345678;
 	//Start winHTTP thread
 	AlertQueueNode* baseNode = (AlertQueueNode*)HeapAlloc(rwHeap,HEAP_ZERO_MEMORY,sizeof(AlertQueueNode));
@@ -284,8 +291,10 @@ BOOL checkLogging(){
 	return runLocalServer(servPipe);// Otherwise we are 
 }
 
-//Alert -  size type pid argCount args... username...
+//Alert - size type pid argCount args... username...
 void sendAlert(HOOKAPI_FUNC_CONF* conf, HOOKAPI_ACTION_CONF* action, void** calledArgPtr){
+	disableAlerts(); //Don't allow recursive alerts!
+
 	WCHAR username[UNLEN+1];
 	DWORD userlen = UNLEN+1;
 	GetUserNameW(username, &userlen); // try to get username
@@ -364,4 +373,5 @@ void sendAlert(HOOKAPI_FUNC_CONF* conf, HOOKAPI_ACTION_CONF* action, void** call
 	DWORD result = 0, cbRead = 0;
 	//Send it! (locally)
 	CallNamedPipeA(LOCAL_REPORT_PIPE, (PVOID)completeMessage.c_str(), (DWORD)completeMessage.length(), &result, sizeof(result), &cbRead, 0);
+	enableAlerts(); // back to normal
 }

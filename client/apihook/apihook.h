@@ -10,6 +10,22 @@ extern HANDLE rwHeap;
 extern HMODULE myDllHandle;
 extern HOOKAPI_CONF * apiConf;
 
+//Alert enabling/disabling
+extern DWORD enableAlertsSlot;
+inline void disableAlerts(){
+	TlsSetValue(enableAlertsSlot, (PVOID)-1);
+}
+inline void enableAlerts(){
+	TlsSetValue(enableAlertsSlot, NULL);
+}
+inline bool alertsEnabled(){
+	return TlsGetValue(enableAlertsSlot) == NULL;
+}
+inline void setupAlertsDisabled(){
+	enableAlertsSlot = TlsAlloc();
+	disableAlerts();
+}
+
 #define LOCAL_REPORT_PIPE "\\\\.\\pipe\\FunctionFilterReport"
 #define REPORT_FILE "FFlog.txt"
 #define MAX_ARGS 64 // should be enough for anybody - 
