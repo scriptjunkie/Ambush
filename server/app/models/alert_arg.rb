@@ -2,11 +2,14 @@ class AlertArg < ActiveRecord::Base
 	belongs_to :parameter
 	belongs_to :alert
 
-	def parse (message, param)
+	def initialize (alert, message, param)
+		super(:alert => alert)
 		size = message.slice!(0, 4).unpack('V')[0]
 		type = message.slice!(0, 4).unpack('V')[0]
 		self.data = message.slice!(0, size - 8)
+		self.data = self.data.force_encoding("UTF-16LE").encode('UTF-8') if param.paramtype == 4
 		self.parameter = param
+		self.save
 	end
 
 	def display

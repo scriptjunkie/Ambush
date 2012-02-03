@@ -249,8 +249,8 @@ function newAction(){
 	$('#modalTitle').html('New signature');
 	$('#new').overlay({load:true, fixed: false}).load();
 	//Fix the height of the notes pane
-	$('[name="act[notes]"]').height($('[name="act[exepath]"]').outerHeight()
-		+ $('[name="act[exepath]"]').offset().top - $('[name="act[name]"]').offset().top);
+	$('[name="act[notes]"]').height($('[name="act[modpath]"]').outerHeight()
+		+ $('[name="act[modpath]"]').offset().top - $('[name="act[name]"]').offset().top);
 	window.existing_sig_id = -1; //we're not editing
 }
 function closeOverlay(name){

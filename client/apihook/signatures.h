@@ -61,13 +61,18 @@ typedef struct sHOOKAPI_ACTION_CONF
     unsigned int   exePathLen;
     unsigned int   retAddrMemType;
     unsigned int   retAddrMemMode;
+    unsigned int   modPathLen;
 	char exePath[1];
 	//HOOKAPI_CONDITION_CONF conditions[1];
 } HOOKAPI_ACTION_CONF, *PHOOKAPI_ACTION_CONF;
 
 //Get Functions
 inline PHOOKAPI_ARG_CONF actionConfArgs(PHOOKAPI_ACTION_CONF conf){
-	return (PHOOKAPI_ARG_CONF) ((PBYTE)conf + sizeof(unsigned int) * 9 +
+	return (PHOOKAPI_ARG_CONF) ((PBYTE)conf + sizeof(unsigned int) * 10 +
+		sizeof(unsigned long long) + conf->exePathLen + conf->modPathLen);
+}
+inline PCHAR actionConfModpath(PHOOKAPI_ACTION_CONF conf){
+	return (PCHAR) ((PBYTE)conf + sizeof(unsigned int) * 10 +
 		sizeof(unsigned long long) + conf->exePathLen);
 }
 inline PHOOKAPI_ACTION_CONF nextActionConf(PHOOKAPI_ACTION_CONF conf){

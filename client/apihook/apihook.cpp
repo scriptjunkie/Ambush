@@ -74,6 +74,16 @@ inline bool memCompareProtect(void* address, unsigned int mode, unsigned int typ
 	return true;
 }
 
+// Ensure we have compiled this regex
+template<typename T, typename C>
+void ensureSlreCompiled(C* arg, int (*compile)(T*,const C*)){
+	if(compiledSignatures.count(arg) == 0){
+		T* regex = (T*)HeapAlloc(rwHeap, HEAP_ZERO_MEMORY, sizeof(T));
+		compile(regex, arg);
+		compiledSignatures[arg] = (slre*)regex;
+	}
+}
+
 //Evaluate each argument in a condition
 inline bool argumentsMatch(HOOKAPI_ACTION_CONF* action, void** calledArgs){
 	HOOKAPI_ARG_CONF* arg = actionConfArgs(action);
@@ -108,12 +118,8 @@ inline bool argumentsMatch(HOOKAPI_ACTION_CONF* action, void** calledArgs){
 				HOOKAPI_CSTRING_ARG* stringArg = (HOOKAPI_CSTRING_ARG*)arg->value;
 				if(calledArg == NULL)
 					return stringArg->value == 0; //Only empty strings match null
-				if(compiledSignatures.count(arg) == 0){
-					slre* regex = (slre*)HeapAlloc(rwHeap, HEAP_ZERO_MEMORY, sizeof(slre));
-					slre_compile(regex, &stringArg->value);
-					compiledSignatures[arg] = regex;
-				}
-				if(slre_match(compiledSignatures[arg], (char*)calledArg, lstrlenA((char*)calledArg), NULL) == 0)
+				ensureSlreCompiled<slre,char>(&stringArg->value, slre_compile);
+				if(slre_match(compiledSignatures[&stringArg->value], (char*)calledArg, lstrlenA((char*)calledArg), NULL) == 0)
 					return false;
 				break;
 			}
@@ -122,12 +128,8 @@ inline bool argumentsMatch(HOOKAPI_ACTION_CONF* action, void** calledArgs){
 				HOOKAPI_WCSTRING_ARG* stringArg = (HOOKAPI_WCSTRING_ARG*)arg->value;
 				if(calledArg == NULL)
 					return stringArg->value == 0; //Only empty strings match null
-				if(compiledSignatures.count(arg) == 0){
-					wslre* regex = (wslre*)HeapAlloc(rwHeap, HEAP_ZERO_MEMORY, sizeof(wslre));
-					wslre_compile(regex, &stringArg->value);
-					compiledSignatures[arg] = (slre*)regex;
-				}
-				if(wslre_match((wslre*)compiledSignatures[arg], (wchar_t*)calledArg, lstrlenW((wchar_t*)calledArg), NULL) == 0)
+				ensureSlreCompiled<wslre,wchar_t>(&stringArg->value, wslre_compile);
+				if(wslre_match((wslre*)compiledSignatures[&stringArg->value], (wchar_t*)calledArg, lstrlenW((wchar_t*)calledArg), NULL) == 0)
 					return false;
 				break;
 			}
@@ -165,17 +167,13 @@ inline bool argumentsMatch(HOOKAPI_ACTION_CONF* action, void** calledArgs){
 				HOOKAPI_BLOB_ARG* blobArg = (HOOKAPI_BLOB_ARG*)arg->value;
 				if(calledArg == NULL)
 					return blobArg->value == 0; //Only empty strings match null
-				if(compiledSignatures.count(arg) == 0){
-					slre* regex = (slre*)HeapAlloc(rwHeap, HEAP_ZERO_MEMORY, sizeof(slre));
-					slre_compile(regex, &blobArg->value);
-					compiledSignatures[arg] = regex;
-				}
+				ensureSlreCompiled<slre,char>(&blobArg->value, slre_compile);
 				size_t size = blobArg->size;
 				if(blobArg->argument != -1)
 					size = (size_t)calledArgs[blobArg->argument];
 				if(size > INT_MAX)
 					return true; // we're not even going to try
-				if(slre_match(compiledSignatures[arg], (char*)calledArg, (int)size, NULL) != 1)
+				if(slre_match(compiledSignatures[&blobArg->value], (char*)calledArg, (int)size, NULL) != 1)
 					return false;
 			}
 		}
@@ -184,7 +182,21 @@ inline bool argumentsMatch(HOOKAPI_ACTION_CONF* action, void** calledArgs){
 	return true;
 }
 
-//Checks whether an action applies to this process
+//Does the filename of the module including addr match regex?
+inline bool matchesModule(PCHAR regex, PVOID addr){
+	if(regex[0] == '\0') // There is no condition, it matches
+		return true;
+	MEMORY_BASIC_INFORMATION meminfo;
+	VirtualQuery(addr, &meminfo, sizeof(meminfo));
+	char fname[MAX_PATH];
+	DWORD len = GetModuleFileNameA((HMODULE)meminfo.AllocationBase, fname, MAX_PATH);
+	if(len == 0)
+		return true; // Not a module?! Default to matching.
+	ensureSlreCompiled<slre,char>(regex, slre_compile);
+	return slre_match(compiledSignatures[regex], fname, len, NULL) == 1;
+}
+
+//Does this action apply to this process?
 inline bool matchesProcess(HOOKAPI_ACTION_CONF* action){
 	if(action->exePath[0] == '\0') // There is no condition, it matches
 		return true;
@@ -200,6 +212,36 @@ inline bool matchesProcess(HOOKAPI_ACTION_CONF* action){
 		HeapFree(rwHeap, 0, regex); // ok we're done
 	}
 	return compiledSignatures[action] == PROC_MATCH;
+}
+
+// Evaluates all actions of a function, taking action if necessary
+bool actionsBlock(HOOKAPI_FUNC_CONF* conf, void** calledArgs, DWORD type, void** retval){
+	HOOKAPI_ACTION_CONF* action = functionConfActions(conf);
+	for(unsigned int i = 0; i < conf->numActions; i++){
+		if(action->type == type && matchesProcess(action) == true // Should check this process?
+				// Does it match our return address constraints?
+				&& ((action->retAddrMemType == 0 && action->retAddrMemMode == 0) ||
+				memCompareProtect(calledArgs - 1, action->retAddrMemMode, action->retAddrMemType))
+				&& matchesModule(actionConfModpath(action), *(calledArgs - 1)) //Should we check this module?
+				&& argumentsMatch(action, calledArgs)){ //Do our argument conditions match?
+			sendAlert(conf, action, calledArgs);
+			//Take action!
+			switch(action->action){
+				case ALERT:
+					break;
+				case BLOCK:
+					*retval = (void*)action->retval;
+					return true;
+				case KILLPROC:
+					TerminateProcess(GetCurrentProcess(),ERROR_ACCESS_DENIED); //More forceful than ExitProcess()
+				case KILLTHREAD:
+					TerminateThread(GetCurrentThread(),ERROR_ACCESS_DENIED); //More forceful than ExitThread()
+			}
+		}
+		//Next action
+		action = nextActionConf(action);
+	}
+	return false;
 }
 
 //This is the final hook that gets called for any function. It loads the function configuration
@@ -226,77 +268,14 @@ void* hook0 (void* arg0){
 		return retfunc();
 	}
 
-	//Evaluate each action - PRE
-	HOOKAPI_ACTION_CONF* action = functionConfActions(conf);
-	for(unsigned int i = 0; i < conf->numActions; i++){
-		if(action->type == POST 	// Should we check now?
-				|| matchesProcess(action) != true // Should check this process?
-				// Does it match our return address constraints?
-				|| ((action->retAddrMemType || action->retAddrMemMode) &&
-				!memCompareProtect(calledArgs - 1, action->retAddrMemMode, 
-				action->retAddrMemType))){
-			//Then it's not our job. Continue
-			action = nextActionConf(action);
-			continue;
-		}
-		//Evaluate each argument
-		if(argumentsMatch(action, calledArgs)){
-			sendAlert(conf, action, calledArgs);
-			//Take action!
-			switch(action->action){
-				case ALERT:
-					break;
-				case BLOCK:
-					setEax((void*)action->retval);
-					return retfunc();
-				case KILLPROC:
-					TerminateProcess(GetCurrentProcess(),ERROR_ACCESS_DENIED); //More forceful than ExitProcess()
-				case KILLTHREAD:
-					TerminateThread(GetCurrentThread(),ERROR_ACCESS_DENIED); //More forceful than ExitThread()
-			}
-		}
-		//Next action
-		action = nextActionConf(action);
+	void* retval;
+	//Check PRE actions before call and if not blocked...
+	if(!actionsBlock(conf, calledArgs, PRE, &retval)){
+		retval = callApi(&arg0, (void*)conf->numArgs, hookArgs[1]); //call the real function
+		actionsBlock(conf, calledArgs, POST, &retval); //and check POST actions afterward
 	}
 
-	//Now call the real function with a copy of the args.
-	void* retval = callApi(&arg0, (void*)conf->numArgs, hookArgs[1]);
-
-	//Evaluate each action - POST
-	action = functionConfActions(conf);
-	for(unsigned int i = 0; i < conf->numActions; i++){
-		if(action->type == PRE 	// Should we check now?
-				|| matchesProcess(action) != true // Should check this process?
-				// Does it match our return address constraints?
-				|| ((action->retAddrMemType || action->retAddrMemMode) &&
-				!memCompareProtect(calledArgs - 1, action->retAddrMemMode, 
-				action->retAddrMemType))){
-			//Then it's not our job. Continue
-			action = nextActionConf(action);
-			continue;
-		}
-		//Evaluate each argument
-		if(argumentsMatch(action, calledArgs)){
-			sendAlert(conf, action, calledArgs);
-			//Take action!
-			switch(action->action){
-				case ALERT:
-					break;
-				case BLOCK:
-					setEax((void*)action->retval);
-					return retfunc();
-				case KILLPROC:
-					TerminateProcess(GetCurrentProcess(),ERROR_ACCESS_DENIED); //More forceful than ExitProcess()
-				case KILLTHREAD:
-					TerminateThread(GetCurrentThread(),ERROR_ACCESS_DENIED); //More forceful than ExitThread()
-			}
-		}
-		//Next action
-		action = nextActionConf(action);
-	}
-
-	//And return the result
-	setEax(retval);
+	setEax(retval);  //And return the result
 	return retfunc();
 }
 

@@ -11,7 +11,7 @@
 #
 # It's strongly recommended to check this file into your version control system.
 
-ActiveRecord::Schema.define(:version => 20120114202412) do
+ActiveRecord::Schema.define(:version => 20120203002310) do
 
   create_table "actions", :force => true do |t|
     t.string  "name"
@@ -25,6 +25,7 @@ ActiveRecord::Schema.define(:version => 20120114202412) do
     t.integer "retprotectMode"
     t.integer "actiontype"
     t.text    "notes"
+    t.string  "modpath"
   end
 
   create_table "alert_args", :force => true do |t|
@@ -47,6 +48,7 @@ ActiveRecord::Schema.define(:version => 20120114202412) do
     t.string   "computer"
     t.string   "ip"
     t.integer  "count"
+    t.string   "module"
   end
 
   add_index "alerts", ["action_id"], :name => "index_alerts_on_action_id"

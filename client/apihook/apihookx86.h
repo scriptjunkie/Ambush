@@ -9,7 +9,7 @@
 
 #define GET_HOOK_ARG "\x89\xc8\xc3\x00" // mov eax, ecx; ret
 
-#define STACK_FIXUP "\x5f\x5f\x5e\x5b\x8b\xe5\x5d\xc2"
+#define STACK_FIXUP "\x5f\x5f\x5e\x5b\x59\xc2" //pop edi; pop edi; pop esi; pop ebx; pop ecx; ret [amount]
 //for hook function tail: pop edi; pop edi; pop esi; pop ebx; mov esp,ebp; pop ebp; ret [amount]
 
 #define POP_RET_ONE "\x5f\x5f\x5e\xc2\x04\x00" //pop edi; pop edi; pop esi; ret 4

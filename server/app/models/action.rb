@@ -87,6 +87,9 @@ class Action < ActiveRecord::Base
 		# default processName - ''
 		self.exepath = '' if self.exepath == nil
 		name = self.exepath + ("\x00"*(4-(self.exepath.length % 4)))
+		# default module path regex - ''
+		self.modpath = '' if self.modpath == nil
+		modname = self.modpath + ("\x00"*(4-(self.modpath.length % 4)))
 		# put together output
 		out = [self.id, self.action, self.severity, self.retval, self.actiontype, args.length,
 				name.length].pack("VVVQVVV")
@@ -98,11 +101,11 @@ class Action < ActiveRecord::Base
 			out << [self.retprotectType, self.retprotectMode].pack("V*")
 		end
 		# arguments - required
-		out << name
+		out << [modname.length].pack('V') + name + modname
 		args.each do |arg|
 			out << arg.compiled
 		end
-		# size, id, action, severity, retval, type, numargs, exePathLen, retprotectType, retprotectMode, exePath[], args[]
+		# size, id, action, severity, retval, type, numargs, exePathLen, retprotectType, retprotectMode, modPathLen, exePath[], modPath[], args[]
 		[out.size + 4].pack("V*") + out
 	end
 end

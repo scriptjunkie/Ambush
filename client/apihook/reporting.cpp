@@ -212,6 +212,7 @@ BOOL runLocalServer(HANDLE servPipe){
 	AlertQueueNode* baseNode = (AlertQueueNode*)HeapAlloc(rwHeap,HEAP_ZERO_MEMORY,sizeof(AlertQueueNode));
 	baseNode->eventHandle = CreateEvent(NULL,TRUE,FALSE,NULL);
 	CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)HTTPthread, baseNode, 0, NULL);
+	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST); // So we don't drop alerts
 	PHOOKAPI_MESSAGE message;
 	while(true){
 		message = (PHOOKAPI_MESSAGE)HeapAlloc(rwHeap, 0, 2000);
@@ -358,6 +359,14 @@ void sendAlert(HOOKAPI_FUNC_CONF* conf, HOOKAPI_ACTION_CONF* action, void** call
 	DWORD fnsize = exeNameLen * sizeof(WCHAR);
 	messageStr.append((char*) &fnsize, sizeof(DWORD));
 	messageStr.append((char*) exeFileName, fnsize); // append exe path name
+
+	//Get module name from retaddr
+	MEMORY_BASIC_INFORMATION meminfo;
+	VirtualQuery(*(calledArgPtr-1), &meminfo, sizeof(meminfo));
+	WCHAR modFileName[MAX_PATH];
+	DWORD msize = GetModuleFileNameW((HMODULE)meminfo.AllocationBase, modFileName, MAX_PATH) * sizeof(WCHAR);
+	messageStr.append((char*) &msize, sizeof(DWORD));
+	messageStr.append((char*) modFileName, msize); // append module path name
 
 	//Now we know total length
 	HOOKAPI_MESSAGE message;
