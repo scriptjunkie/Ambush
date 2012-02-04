@@ -429,6 +429,8 @@ DWORD inject_via_remotethread(HANDLE hProcess, DWORD dwDestinationArch, LPVOID l
 		return FALSE; //BREAK_ON_ERROR( "[INJECT] inject_via_remotethread: ResumeThread failed" )
 
 	if( hThread )
+		WaitForSingleObject( hThread, 1000 );// Wait for it to load
+	if( hThread )
 		CloseHandle( hThread );
 	SetLastError( dwResult );
 	return dwResult;

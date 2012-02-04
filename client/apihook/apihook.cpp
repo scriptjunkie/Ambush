@@ -294,12 +294,13 @@ DWORD WINAPI CreateProcessInternalWHook(PVOID unknown1, LPCWSTR lpApplicationNam
 		bInheritHandles, dwCreationFlags | CREATE_SUSPENDED, lpEnvironment, lpCurrentDirectory, lpStartupInfo, lpProcessInformation, unknown2);
 
 	// If something weird or bad or broken is happening, don't continue
-	if(alreadySuspended || retval == 0)
+	if(retval == 0)
 		return retval;
 	
 	disableAlerts();
 	dll_inject_load(lpProcessInformation->dwProcessId); // Try msf-style cross-arch inject
-	ResumeThread(lpProcessInformation->hThread);
+	if(!alreadySuspended)
+		ResumeThread(lpProcessInformation->hThread);
 	enableAlerts();
 	return retval;
 }

@@ -43,7 +43,7 @@ void removeShortPath(char * appInitVal, const char * shortDllPath){
 	size_t offset = appinitDllsString.find(shortDllPath);
 	size_t size = strlen(shortDllPath);
 	if(offset == appinitDllsString.npos){
-		cerr << "Did not find path in AppInit_Dlls\n";
+		cerr << "Did not find path in AppInit_Dlls\n" << appInitVal << "\n" << shortDllPath << "\n";
 		return;
 	}
 	if(offset > 0 && appinitDllsString.at(offset) == ' '){
