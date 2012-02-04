@@ -242,15 +242,10 @@ BOOL runLocalServer(HANDLE servPipe){
 					continue; //Error
 			}
 		}
-		// Acknowledge
-		DWORD written;
-		if (!WriteFile(servPipe, &reply, sizeof(reply), &written, NULL) || sizeof(reply) != written) {
-			HeapFree(rwHeap, 0, message);
-			continue; //Error
-		}
 		// Save to file
 		FILETIME filetime;
 		GetSystemTimeAsFileTime(&filetime); //save time
+		DWORD written;
 		if (!WriteFile(outputFile, &filetime, sizeof(filetime), &written, NULL) 
 			|| !WriteFile(outputFile, message, message->length, &written, NULL)){ //save alert
 			HeapFree(rwHeap, 0, message);
@@ -379,8 +374,15 @@ void sendAlert(HOOKAPI_FUNC_CONF* conf, HOOKAPI_ACTION_CONF* action, void** call
 	//Put it all together into a complete message
 	string completeMessage((char*)&message, sizeof(message));
 	completeMessage.append(messageStr);
-	DWORD result = 0, cbRead = 0;
+	DWORD numbytes = 0;
 	//Send it! (locally)
-	CallNamedPipeA(LOCAL_REPORT_PIPE, (PVOID)completeMessage.c_str(), (DWORD)completeMessage.length(), &result, sizeof(result), &cbRead, 0);
+	HANDLE pipe = CreateFileA(LOCAL_REPORT_PIPE, FILE_WRITE_DATA, 7, NULL, OPEN_ALWAYS,0,0);
+	for(int i = 0; pipe == INVALID_HANDLE_VALUE && i < 10; i++){ // Up to 10 tries if it fails
+		WaitNamedPipeA(LOCAL_REPORT_PIPE, 500);
+		pipe = CreateFileA(LOCAL_REPORT_PIPE, FILE_WRITE_DATA, FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,
+			NULL,OPEN_EXISTING,0,0);
+	}
+	WriteFile(pipe, (PVOID)completeMessage.c_str(), (DWORD)completeMessage.length(), &numbytes, NULL);
+	CloseHandle(pipe); //not really anything we can do if writing fails
 	enableAlerts(); // back to normal
 }
