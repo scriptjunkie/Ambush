@@ -192,6 +192,8 @@ inline bool matchesModule(PCHAR regex, PVOID addr){
 	DWORD len = GetModuleFileNameA((HMODULE)meminfo.AllocationBase, fname, MAX_PATH);
 	if(len == 0)
 		return true; // Not a module?! Default to matching.
+	for (int i = 0; i < len; i++)
+		fname[i] = tolower(fname[ i ]); // lower-case it!
 	ensureSlreCompiled<slre,char>(regex, slre_compile);
 	return slre_match(compiledSignatures[regex], fname, len, NULL) == 1;
 }
@@ -203,6 +205,8 @@ inline bool matchesProcess(HOOKAPI_ACTION_CONF* action){
 	if(compiledSignatures.count(action) == 0){ // We haven't seen it before. Do the check.
 		char exeFileName[MAX_PATH];
 		DWORD exeNameLen = GetModuleFileNameA(NULL, exeFileName, sizeof(exeFileName));
+		for (int i = 0; i < exeNameLen; i++)
+			exeFileName[i] = tolower(exeFileName[ i ]); // lower-case it!
 		slre* regex = (slre*)HeapAlloc(rwHeap, HEAP_ZERO_MEMORY, sizeof(slre));
 		slre_compile(regex, action->exePath);
 		if(slre_match(regex, exeFileName, exeNameLen, NULL) == 1)

@@ -30,6 +30,8 @@ class Action < ActiveRecord::Base
 		simple = {'name' => self.name, 'action' => @@actions[self.action], 'severity' => self.severity, 
 				'function' => self.available_function.name, 'dll' => self.available_function.available_dll.name, 
 				'arguments' => self.arguments.map{|a| a.simplified(defined)} }
+		simple['module'] = self.modpath if self.modpath != nil and self.modpath.length > 0
+		simple['process'] = self.exepath if self.exepath != nil and self.exepath.length > 0
 		simple['retval'] = self.retval if self.action == 1
 		if self.retprotectMode != 0
 			if @@memconstants.has_key? self.retprotectMode
@@ -51,6 +53,8 @@ class Action < ActiveRecord::Base
 		#Create action
 		act = Action.new(:action => @@actions.index(simple['action']), :available_function_id => func.id,
 				:severity => simple['severity'], :name => simple['name'], :signature_set_id => set.id)
+		act.exepath = simple['process'] if simple['process']
+		act.modpath = simple['module'] if simple['module']
 
 		#Return address conditions
 		if simple['retprotectMode']
@@ -86,10 +90,10 @@ class Action < ActiveRecord::Base
 		raise 'Error - no args' if args.length == 0
 		# default processName - ''
 		self.exepath = '' if self.exepath == nil
-		name = self.exepath + ("\x00"*(4-(self.exepath.length % 4)))
+		name = self.exepath.downcase + ("\x00"*(4-(self.exepath.length % 4)))
 		# default module path regex - ''
 		self.modpath = '' if self.modpath == nil
-		modname = self.modpath + ("\x00"*(4-(self.modpath.length % 4)))
+		modname = self.modpath.downcase + ("\x00"*(4-(self.modpath.length % 4)))
 		# put together output
 		out = [self.id, self.action, self.severity, self.retval, self.actiontype, args.length,
 				name.length].pack("VVVQVVV")
