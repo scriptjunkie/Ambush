@@ -86,7 +86,7 @@ function typeChange(i,arg){
 			+ '>Size specified in argument</option>';
 	}
 	$('#typeval'+i).html(typeHTML+'</select>');
-	if($('#sels'+i+' option[value='+types[argtype]+']').length > 0)
+	if($('#sels'+i+' option[value="'+types[argtype]+'"]').length > 0)
 		$('#sels'+i).val(types[argtype]); //Select the right one
 	subtypeChange(i, arg);
 }
@@ -111,7 +111,7 @@ function subtypeChange(i, arg){
 		$('#restrictval'+i).html('<input name="val'+i+'" value="^\\x00\\xff*RegExp$" size=20></input> Size:<input name="blobval'+i+'" value="0" size=5></input>');
 	}else if(val == "ARG"){
 		var html = '<input name="val'+i+'" value="^\\x00\\xff*RegExp$" size=20></input> Size arg:<select id="sels'+i+'" name="blobval'+i+'">';
-		for(j=0; j<$('#typerow').children().length - 2; j++)
+		for(j=0; j<=$('#typerow').children().length - 2; j++)
 			if(j != i)
 				html += '<option value="'+j+'">'+j+'</option>';
 		html += '</select>';

@@ -46,9 +46,7 @@ class ActionsController < ApplicationController
 		
 		#Create action
 		a = Action.new(params[:act])
-		if params[:act][:retval][0..1] == '0x'
-			a.retval = params[:act][:retval][2..-1].to_i(16)
-		end
+		a.retval = params[:act][:retval].to_i(16) if params[:act][:retval][0..1] == '0x'
 		a.signature_set = SignatureSet.find(params[:signature_set_id])
 		a.available_function = func
 		a.setAction params[:act][:action]
@@ -57,6 +55,7 @@ class ActionsController < ApplicationController
 		if params[:retprotectType] != 'Ignore'
 			modeParam = params["subval-1"]
 			a.retprotectMode = @@memmodes[modeParam] || modeParam.to_i
+			a.retprotectMode = modeParam.to_i(16) if modeParam[0..1] == '0x' # handle 0xabc style
 		else
 			a.retprotectMode = 0
 		end
@@ -83,6 +82,7 @@ class ActionsController < ApplicationController
 			if(givenType == 'Pointer')
 				modeParam = params["subval#{currentParam}"]
 				arg.setval2(@@memmodes[modeParam] || modeParam.to_i)
+				arg.setval2(modeParam.to_i(16)) if modeParam[0..1] == '0x'
 			end
 
 			#must give blob length

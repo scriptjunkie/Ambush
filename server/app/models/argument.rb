@@ -62,8 +62,8 @@ class Argument < ActiveRecord::Base
 			simple['mask type'] = @@masktypes[self.val1]
 			simple['mask'] = self.val2
 		when 'Blob'
-			simple['size argument'] = self.val2 if self.val1 = -1 or self.val1 == nil
-			simple['size'] = self.val1 if self.val2 = 0 or self.val2 == nil
+			simple['size argument'] = self.val1 if self.val2 = -1 or self.val2 == nil
+			simple['size'] = self.val2 if self.val1 == nil
 			simple['expression'] = self.regExp
 		else
 			raise "Error - type #{self.argtype} not supported"
@@ -96,12 +96,12 @@ class Argument < ActiveRecord::Base
 			arg.val2 = simple['mask']
 		when 'Blob'
 			arg.regExp = simple["expression"]
-			if simple.has_key? 'argument'
-				arg.val2 = simple['argument'] 
-				arg.val1 = -1
+			if simple.has_key? 'size argument'
+				arg.val1 = simple['size argument'] 
+				arg.val2 = -1
 			elsif simple.has_key? 'size'
-				arg.val1 = simple['size']
-				arg.val2 = 0
+				arg.val2 = simple['size']
+				arg.val1 = 0
 			else
 				raise Exception.new('Error - must provide blob argument or size')
 			end

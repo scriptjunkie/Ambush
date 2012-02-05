@@ -10,17 +10,6 @@ actions:
   arguments:
   - type: Ignore
   - type: Ignore
-- name: ! 'Open Remote '
-  action: BLOCK
-  severity: 1000
-  function: OpenSCManagerA
-  dll: Advapi32.dll
-  arguments:
-  - type: C string
-    expression: ^..*$
-  - type: Ignore
-  - type: Ignore
-  retval:
 - name: DEP Policy Disable
   action: ALERT
   severity: 2000
@@ -50,18 +39,6 @@ actions:
   - type: Ignore
   - type: Integer
     val: 0
-  - type: Ignore
-- name: Stager - Winsock
-  action: ALERT
-  severity: 2000
-  function: recv
-  dll: Ws2_32.dll
-  arguments:
-  - type: Ignore
-  - type: Pointer
-    mask type: ANY
-    mask: 64
-  - type: Ignore
   - type: Ignore
 - name: Process Injection - WPM
   action: ALERT
@@ -148,51 +125,6 @@ actions:
   - type: Ignore
   - type: Ignore
   - type: Ignore
-- name: Shellcode - CreateProcessA
-  action: KILLTHREAD
-  severity: 3000
-  function: CreateProcessA
-  dll: Kernel32.dll
-  arguments:
-  - type: Ignore
-  - type: Ignore
-  - type: Ignore
-  - type: Ignore
-  - type: Ignore
-  - type: Ignore
-  - type: Ignore
-  - type: Ignore
-  - type: Ignore
-  - type: Ignore
-  retprotectMode: PAGE_EXECUTE_READWRITE
-- name: Stager - Wininet HTTPS A
-  action: ALERT
-  severity: 2000
-  function: InternetSetOptionA
-  dll: Wininet.dll
-  arguments:
-  - type: Ignore
-  - type: Integer
-    val: 31
-  - type: Blob
-    size argument: 4
-    size: -1
-    expression: ^\x80\x33
-  - type: Ignore
-- name: Stager - Wininet HTTPS
-  action: ALERT
-  severity: 2000
-  function: InternetSetOptionW
-  dll: Wininet.dll
-  arguments:
-  - type: Ignore
-  - type: Integer
-    val: 31
-  - type: Blob
-    size argument: 4
-    size: -1
-    expression: ^\x80\x33
-  - type: Ignore
 - name: Stager - Wininet HTTPS Request
   action: BLOCK
   severity: 0
@@ -208,16 +140,6 @@ actions:
   - type: Bitmask
     mask type: ALL
     mask: 8401408
-  - type: Ignore
-  retval:
-- name: Test - SleepEx
-  action: BLOCK
-  severity: 1000
-  function: SleepEx
-  dll: Kernel32.dll
-  arguments:
-  - type: Integer
-    val: 1001
   - type: Ignore
   retval:
 - name: Remote Control - keybd
@@ -251,5 +173,79 @@ actions:
   - type: Ignore
     name: lpfnCB
     paramtype: Integer
+  retval:
+- name: Shellcode - CreateProcessA
+  action: ALERT
+  severity: 2000
+  function: CreateProcessA
+  dll: Kernel32.dll
+  arguments:
+  - type: Ignore
+  - type: Ignore
+  - type: Ignore
+  - type: Ignore
+  - type: Ignore
+  - type: Ignore
+  - type: Ignore
+  - type: Ignore
+  - type: Ignore
+  - type: Ignore
+  retprotectMode: PAGE_EXECUTE_READWRITE
+- name: Stager - Wininet HTTPS
+  action: ALERT
+  severity: 2000
+  function: InternetSetOptionW
+  dll: Wininet.dll
+  arguments:
+  - type: Ignore
+  - type: Integer
+    val: 31
+  - type: Blob
+    size argument: 3
+    expression: ^\x80\x33
+  - type: Ignore
+- name: Stager - Wininet HTTPS A
+  action: ALERT
+  severity: 2000
+  function: InternetSetOptionA
+  dll: Wininet.dll
+  arguments:
+  - type: Ignore
+  - type: Integer
+    val: 31
+  - type: Blob
+    size argument: 3
+    expression: ^\x80\x33
+  - type: Ignore
+- name: Stager - Winsock
+  action: ALERT
+  severity: 2000
+  function: recv
+  dll: Ws2_32.dll
+  arguments:
+  - type: Ignore
+    name: s
+    paramtype: Integer
+  - type: Pointer
+    mask type: ANY
+    mask: 64
+    name: buf
+    paramtype: Pointer
+  - type: Ignore
+    name: len
+    paramtype: Integer
+  - type: Ignore
+    name: flags
+    paramtype: Integer
+- name: ! 'Open Remote '
+  action: BLOCK
+  severity: 1000
+  function: OpenSCManagerA
+  dll: Advapi32.dll
+  arguments:
+  - type: C string
+    expression: ^..*$
+  - type: Ignore
+  - type: Ignore
   retval: 0
 ...

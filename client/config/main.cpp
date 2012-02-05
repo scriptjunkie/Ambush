@@ -2,6 +2,7 @@
 #include <winhttp.h>
 #include <iostream>
 #include <string>
+#include <algorithm>
 #include <Strsafe.h>
 #include "../apihook/signatures.h"
 using namespace std;
@@ -301,7 +302,9 @@ int main(int argc, char** argv){
 
 	//Get short path of DLLs
 	string dllPath32(filename);
+	std::transform(dllPath32.begin(), dllPath32.end(), dllPath32.begin(), ::toupper);
 	string dllPath64(filename);
+	std::transform(dllPath64.begin(), dllPath64.end(), dllPath64.begin(), ::toupper);
 	dllPath32.append("apihook.dll");
 	dllPath64.append("apihook64.dll");
 	GetShortPathNameA(dllPath32.c_str(), shortDllPath32, sizeof(shortDllPath32));

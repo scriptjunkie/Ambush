@@ -98,10 +98,9 @@ class Action < ActiveRecord::Base
 		out = [self.id, self.action, self.severity, self.retval, self.actiontype, args.length,
 				name.length].pack("VVVQVVV")
 		# default retAddress - {}
-		if self.retprotectType == nil
+		if self.retprotectMode == nil
 			out << [0,0].pack('V*')
 		else
-			raise "Error - invalid argument type for retAddress" if self.retprotectMode == nil
 			out << [self.retprotectType, self.retprotectMode].pack("V*")
 		end
 		# arguments - required

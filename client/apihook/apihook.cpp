@@ -225,7 +225,7 @@ bool actionsBlock(HOOKAPI_FUNC_CONF* conf, void** calledArgs, DWORD type, void**
 		if(action->type == type && matchesProcess(action) == true // Should check this process?
 				// Does it match our return address constraints?
 				&& ((action->retAddrMemType == 0 && action->retAddrMemMode == 0) ||
-				memCompareProtect(calledArgs - 1, action->retAddrMemMode, action->retAddrMemType))
+				memCompareProtect(*(calledArgs - 1), action->retAddrMemMode, action->retAddrMemType))
 				&& matchesModule(actionConfModpath(action), *(calledArgs - 1)) //Should we check this module?
 				&& argumentsMatch(action, calledArgs)){ //Do our argument conditions match?
 			sendAlert(conf, action, calledArgs);

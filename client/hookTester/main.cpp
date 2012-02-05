@@ -35,14 +35,14 @@ int CALLBACK WinMain(HINSTANCE,HINSTANCE,LPSTR,int){
 	if(MessageBoxA(NULL,"URLDownloadToFileA http://yahoo.com/", "Hook tester", MB_YESNO) != IDNO)
 		URLDownloadToFileA(NULL, "http://yahoo.com/", "deleteme.txt", 0, NULL);
 
-	STARTUPINFOW start;
+	STARTUPINFOA start;
 	PROCESS_INFORMATION proc;
 	memset(&start,0,sizeof(start));
 	memset(&proc,0,sizeof(proc));
-	wchar_t cmdline[100];
-	lstrcpyW(cmdline,L"ipconfig.exe");
-	if(MessageBoxA(NULL,"CreateProcessW ipconfig", "Hook tester", MB_YESNO) != IDNO)
-		CreateProcessW(NULL,cmdline,NULL,NULL,0,0,NULL,NULL,&start,&proc);
+	char cmdline[100];
+	lstrcpyA(cmdline,"ipconfig.exe");
+	if(MessageBoxA(NULL,"CreateProcessA ipconfig", "Hook tester", MB_YESNO) != IDNO)
+		CreateProcessA(NULL,cmdline,NULL,NULL,0,0,NULL,NULL,&start,&proc);
 	if(MessageBoxA(NULL,"WinExec calc", "Hook tester", MB_YESNO) != IDNO)
 		WinExec("calc",0);
 	//Test killproc with sleepEx 1002
