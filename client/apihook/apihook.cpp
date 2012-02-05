@@ -294,7 +294,7 @@ DWORD WINAPI CreateProcessInternalWHook(PVOID unknown1, LPCWSTR lpApplicationNam
 		bInheritHandles, dwCreationFlags | CREATE_SUSPENDED, lpEnvironment, lpCurrentDirectory, lpStartupInfo, lpProcessInformation, unknown2);
 
 	// If something weird or bad or broken is happening, don't continue
-	if(retval == 0)
+	if(retval == 0 || unknown1 != 0 || unknown2 != 0)
 		return retval;
 	
 	disableAlerts();
