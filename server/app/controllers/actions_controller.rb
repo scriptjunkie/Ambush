@@ -78,7 +78,7 @@ class ActionsController < ApplicationController
 			#get val
 			arg.regExp = params["val#{currentParam}"] if ['C string', 'WC string', 'Blob'].index(types[arg.argtype])
 			arg.setval1(params["val#{currentParam}"]) if ['Integer', 'Range', 'Pointer', 'Bitmask', 'Not'].index(givenType)
-			arg.setval2(params["subval#{currentParam}"]) if ['Ranger', 'Bitmask'].index(givenType)
+			arg.setval2(params["subval#{currentParam}"]) if ['Range', 'Bitmask'].index(givenType)
 			if(givenType == 'Pointer')
 				modeParam = params["subval#{currentParam}"]
 				arg.setval2(@@memmodes[modeParam] || modeParam.to_i)
