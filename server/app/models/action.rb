@@ -86,7 +86,7 @@ class Action < ActiveRecord::Base
 		# default retval - 0
 		self.retval = 0 if self.retval == nil
 		# args - required
-		args = self.arguments
+		args = self.arguments.order('id')
 		raise 'Error - no args' if args.length == 0
 		# default processName - ''
 		self.exepath = '' if self.exepath == nil
