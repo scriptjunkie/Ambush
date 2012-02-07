@@ -10,36 +10,22 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "config", "config\config.vcp
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
-		Debug|Win32 = Debug|Win32
-		Debug|x64 = Debug|x64
 		Release|Win32 = Release|Win32
 		Release|x64 = Release|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{57E5F0A7-2F7D-452B-A9C4-443DA43781C5}.Debug|Win32.ActiveCfg = Release|x64
-		{57E5F0A7-2F7D-452B-A9C4-443DA43781C5}.Debug|x64.ActiveCfg = Release|x64
 		{57E5F0A7-2F7D-452B-A9C4-443DA43781C5}.Release|Win32.ActiveCfg = Release|Win32
 		{57E5F0A7-2F7D-452B-A9C4-443DA43781C5}.Release|Win32.Build.0 = Release|Win32
 		{57E5F0A7-2F7D-452B-A9C4-443DA43781C5}.Release|x64.ActiveCfg = Release|x64
 		{57E5F0A7-2F7D-452B-A9C4-443DA43781C5}.Release|x64.Build.0 = Release|x64
-		{6C26D565-0DEA-48A7-AB84-1BA43C2E1CC7}.Debug|Win32.ActiveCfg = Debug|Win32
-		{6C26D565-0DEA-48A7-AB84-1BA43C2E1CC7}.Debug|Win32.Build.0 = Debug|Win32
-		{6C26D565-0DEA-48A7-AB84-1BA43C2E1CC7}.Debug|x64.ActiveCfg = Debug|Win32
-		{6C26D565-0DEA-48A7-AB84-1BA43C2E1CC7}.Debug|x64.Build.0 = Debug|Win32
 		{6C26D565-0DEA-48A7-AB84-1BA43C2E1CC7}.Release|Win32.ActiveCfg = Release|Win32
 		{6C26D565-0DEA-48A7-AB84-1BA43C2E1CC7}.Release|Win32.Build.0 = Release|Win32
 		{6C26D565-0DEA-48A7-AB84-1BA43C2E1CC7}.Release|x64.ActiveCfg = Release|x64
 		{6C26D565-0DEA-48A7-AB84-1BA43C2E1CC7}.Release|x64.Build.0 = Release|x64
-		{1A5BB00C-3799-4D1C-920D-2AA35B276EE6}.Debug|Win32.ActiveCfg = Debug
-		{1A5BB00C-3799-4D1C-920D-2AA35B276EE6}.Debug|x64.ActiveCfg = Debug
 		{1A5BB00C-3799-4D1C-920D-2AA35B276EE6}.Release|Win32.ActiveCfg = Release
 		{1A5BB00C-3799-4D1C-920D-2AA35B276EE6}.Release|Win32.Build.0 = Release
 		{1A5BB00C-3799-4D1C-920D-2AA35B276EE6}.Release|x64.ActiveCfg = Release
 		{1A5BB00C-3799-4D1C-920D-2AA35B276EE6}.Release|x64.Build.0 = Release
-		{84624F0D-0C61-43EE-BFA6-40FC05395D2B}.Debug|Win32.ActiveCfg = Debug|Win32
-		{84624F0D-0C61-43EE-BFA6-40FC05395D2B}.Debug|Win32.Build.0 = Debug|Win32
-		{84624F0D-0C61-43EE-BFA6-40FC05395D2B}.Debug|x64.ActiveCfg = Debug|Win32
-		{84624F0D-0C61-43EE-BFA6-40FC05395D2B}.Debug|x64.Build.0 = Debug|Win32
 		{84624F0D-0C61-43EE-BFA6-40FC05395D2B}.Release|Win32.ActiveCfg = Release|Win32
 		{84624F0D-0C61-43EE-BFA6-40FC05395D2B}.Release|Win32.Build.0 = Release|Win32
 		{84624F0D-0C61-43EE-BFA6-40FC05395D2B}.Release|x64.ActiveCfg = Release|Win32

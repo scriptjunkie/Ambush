@@ -228,6 +228,7 @@ function editAction(){
 	$('#modalTitle').html('Edit signature');
 	//Display the overlay
 	$('#new').overlay({load:true, fixed: false}).load();
+	fixHeight();
 	$.getJSON('/actions/'+getCheckedSigs()[0]+'.json',function(data){
 		for(key in data.action)
 			$('[name="act['+key+']"]').attr('value', data.action[key]);
@@ -245,12 +246,14 @@ function editAction(){
 		checkActionSelect();
 	});
 }
+function fixHeight(){//Fix the height of the notes pane
+	$('[name="act[notes]"]').height($('[name="act[modpath]"]').outerHeight()
+		+ $('[name="act[modpath]"]').offset().top - $('[name="act[name]"]').offset().top);
+}
 function newAction(){
 	$('#modalTitle').html('New signature');
 	$('#new').overlay({load:true, fixed: false}).load();
-	//Fix the height of the notes pane
-	$('[name="act[notes]"]').height($('[name="act[modpath]"]').outerHeight()
-		+ $('[name="act[modpath]"]').offset().top - $('[name="act[name]"]').offset().top);
+	fixHeight();
 	window.existing_sig_id = -1; //we're not editing
 }
 function closeOverlay(name){

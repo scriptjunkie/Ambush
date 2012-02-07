@@ -1,54 +1,119 @@
 #include <windows.h>
+#include <cstring>
+#include <ctime>
+#include <psapi.h>
 
-typedef HANDLE (WINAPI *URLDownloadToFileAFunc)(
+bool quiet = false;
+bool thread = false;
+typedef HANDLE (WINAPI *URLDownloadToFileWFunc)(
     LPUNKNOWN pCaller,
-    LPCSTR szURL,
-    LPCSTR szFileName,
+    LPCWSTR szURL,
+    LPCWSTR szFileName,
     DWORD dwReserved,
     LPBINDSTATUSCALLBACK lpfnCB
 );
+typedef int (WINAPI * recvfunc)(int s, char *buf, int len, int flags);
 DWORD WINAPI ThreadProc(LPVOID arg){
-	MessageBoxA(NULL,"I am in a new thread!","Hook Tester",0);
+	thread = true;
+	if(!quiet)
+		MessageBoxA(NULL,"I am in a new thread!","Ambush tester",0);
 	return 0;
 }
+bool ask(const char* message){
+	return quiet || MessageBoxA(NULL, message, "Ambush tester", MB_YESNO) == IDYES;
+}
+void error(const char* message){
+	if(quiet)
+		MessageBoxA(NULL, message, "ERROR - Ambush test", MB_ICONERROR);
+}
 int CALLBACK WinMain(HINSTANCE,HINSTANCE,LPSTR,int){
-	if(MessageBoxA(NULL,"Manually load library?","Hook Tester",MB_YESNO) == IDYES)
+	quiet = strstr(GetCommandLineA(), "quiet") != NULL;
+
+	//Change directory to binary directory
+	char filename[MAX_PATH];
+	DWORD size = GetModuleFileNameA(NULL, filename, sizeof(filename));
+	for(size -= 1; filename[size] != '\\' && size != 0; size--)
+		filename[size] = 0;
+	SetCurrentDirectoryA(filename);
+
+	if(ask("Update signatures?"))
+		system("config.exe update");
+
+	if(ask("Manually load library?"))
 #ifdef _M_X64
 		if(LoadLibraryA("apihook64.dll") == NULL)
 #else
 		if(LoadLibraryA("apihook.dll") == NULL)
 #endif
 			MessageBoxA(NULL,"Load failed!","Hook Tester",0);
-	//Basic test
-	if(MessageBoxA(NULL,"Test starting. SleepEx 1000...","Hook tester",MB_YESNO) != IDNO)
-		SleepEx(1000, FALSE);
-	//Block and aggregation test 
-	if(MessageBoxA(NULL,"SleepEx 1001 quad","Hook tester",MB_YESNO) != IDNO)
-		for(int i = 0; i < 4; i++)
-			SleepEx(1001, FALSE);
-	if(MessageBoxA(NULL,"SleepEx 1001 quad","Hook tester",MB_YESNO) != IDNO)
-		for(int i = 0; i < 4; i++)
-			SleepEx(1001, FALSE);
-	//Test LoadLibrary, GetProcAddress
-	URLDownloadToFileAFunc URLDownloadToFileA = (URLDownloadToFileAFunc)
-		GetProcAddress(LoadLibraryA("urlmon"), "URLDownloadToFileA");
-	if(MessageBoxA(NULL,"URLDownloadToFileA http://yahoo.com/", "Hook tester", MB_YESNO) != IDNO)
-		URLDownloadToFileA(NULL, "http://yahoo.com/", "deleteme.txt", 0, NULL);
 
+	//ALLOW TEST
+	clock_t one=clock();
+	if(ask("Test starting. SleepEx 1000..."))
+		SleepEx(1000, FALSE);
+	if(quiet && clock() - one < CLOCKS_PER_SEC / 2)
+		error("SleepEx(1000, 0) exited early");
+
+	//BLOCK AND AGGREGATION TEST
+	one=clock();
+	if(ask("SleepEx 1001 quad"))
+		for(int i = 0; i < 4; i++)
+			SleepEx(1001, FALSE);
+	if(ask("SleepEx 1001 quad"))
+		for(int i = 0; i < 4; i++)
+			SleepEx(1001, FALSE);
+	if(quiet && clock() - one > CLOCKS_PER_SEC)
+		error("SleepEx(1001, 0) was not blocked");
+
+	//URLDOWNLOADTOFILEW TEST
+	//Test LoadLibrary, GetProcAddress, WC string regex
+	DeleteFileA("deleteme.txt");
+	URLDownloadToFileWFunc URLDownloadToFileW = (URLDownloadToFileWFunc)
+		GetProcAddress(LoadLibraryA("urlmon"), "URLDownloadToFileW");
+	if(ask("URLDownloadToFileW http://www.yahoo.com/"))
+		if(URLDownloadToFileW(NULL, L"http://www.yahoo.com/", L"deleteme.txt", 0, NULL) != (HANDLE)73)
+			error("URLDOWNLOADTOFILEW wrong return value");
+
+	//RECV TEST
+	//Test LoadLibrary, GetProcAddress, Pointer, and Integer range
+	recvfunc myrecv = (recvfunc)GetProcAddress(LoadLibraryA("ws2_32.dll"), "recv");
+	PVOID rwx = VirtualAlloc(NULL, 1021, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+	if(ask("winsock recv"))
+		if(myrecv(0, (char*)rwx, 1021, 0) != 0)
+			error("Ws2_32 recv did not return the correct value");
+
+	//INJECT TEST - ensures library is loaded into all new processes
 	STARTUPINFOA start;
 	PROCESS_INFORMATION proc;
 	memset(&start,0,sizeof(start));
 	memset(&proc,0,sizeof(proc));
 	char cmdline[100];
-	lstrcpyA(cmdline,"ipconfig.exe");
-	if(MessageBoxA(NULL,"CreateProcessA ipconfig", "Hook tester", MB_YESNO) != IDNO)
+	lstrcpyA(cmdline,"cmd.exe");
+	if(ask("Start cmd")){
 		CreateProcessA(NULL,cmdline,NULL,NULL,0,0,NULL,NULL,&start,&proc);
-	if(MessageBoxA(NULL,"WinExec calc", "Hook tester", MB_YESNO) != IDNO)
-		WinExec("calc",0);
+		HMODULE hmods[100];
+		DWORD bytes;
+		CHAR modname[MAX_PATH];
+		EnumProcessModules(proc.hProcess, hmods, sizeof(hmods), &bytes);
+		bool found = false;
+		for(int i = 0; i < (bytes / sizeof(HMODULE)); i++)
+			if(GetModuleFileNameExA(proc.hProcess, hmods[i], modname, MAX_PATH))
+				if(strstr(modname, "apihook") != NULL)
+					found = true;
+		if(found == false)
+			error("Process injection failed!");
+		TerminateProcess(proc.hProcess, 0);
+	}
+
+	//TEST NOT
+	if(ask("Non-remote CreateRemoteThread")){
+		WaitForSingleObject(CreateRemoteThread(GetCurrentProcess(),NULL,0,&ThreadProc,NULL,0,NULL), 500);
+		if(thread != true)
+			error("Thread did not run!");
+	}
+
 	//Test killproc with sleepEx 1002
-	if(MessageBoxA(NULL,"SleepEx 1002", "Hook tester", MB_YESNO) != IDNO)
+	if(ask("SleepEx 1002"))
 		SleepEx(1002, FALSE);
-	if(MessageBoxA(NULL,"Non-remote CreateRemoteThread", "Hook tester", MB_YESNO) != IDNO)
-		CreateRemoteThread(GetCurrentProcess(),NULL,0,&ThreadProc,NULL,0,NULL);
-	MessageBoxA(NULL,"Test complete","Hook tester",0);
+	error("SleepEx(1002,0) Kill process failed!");
 }

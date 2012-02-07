@@ -111,7 +111,7 @@ inline bool argumentsMatch(HOOKAPI_ACTION_CONF* action, void** calledArgs){
 			//so non-matches are < Lbound AND > Hbound
 				((belowLbound && aboveHbound) && !interiorRange) )
 				return false;
-			break;
+				break;
 			}
 		case CSTRING:
 			{
@@ -136,7 +136,7 @@ inline bool argumentsMatch(HOOKAPI_ACTION_CONF* action, void** calledArgs){
 		case MEM:
 			{
 				PHOOKAPI_MEM_ARG memArg = (PHOOKAPI_MEM_ARG)arg->value;
-				if(memCompareProtect(calledArg, memArg->memMode, memArg->memType) != false)
+				if(memCompareProtect(calledArg, memArg->memMode, memArg->memType) == false)
 					return false;
 				break;
 			}
@@ -171,10 +171,9 @@ inline bool argumentsMatch(HOOKAPI_ACTION_CONF* action, void** calledArgs){
 				size_t size = blobArg->size;
 				if(blobArg->argument != -1)
 					size = (size_t)calledArgs[blobArg->argument];
-				if(size > INT_MAX)
-					return true; // we're not even going to try
-				if(slre_match(compiledSignatures[&blobArg->value], (char*)calledArg, (int)size, NULL) != 1)
-					return false;
+				if(size < INT_MAX && // we're not even going to try
+					slre_match(compiledSignatures[&blobArg->value], (char*)calledArg, (int)size, NULL) != 1)
+						return false;
 			}
 		}
 		arg = nextArgConf(arg);
