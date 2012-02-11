@@ -207,7 +207,6 @@ BOOL runLocalServer(HANDLE servPipe){
 	// Ok, we're good. Now disable alerts from this thread to prevent recursive alerts.
 	disableAlerts();
 
-	DWORD reply = 0x12345678;
 	//Start winHTTP thread
 	AlertQueueNode* baseNode = (AlertQueueNode*)HeapAlloc(rwHeap,HEAP_ZERO_MEMORY,sizeof(AlertQueueNode));
 	baseNode->eventHandle = CreateEvent(NULL,TRUE,FALSE,NULL);

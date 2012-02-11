@@ -8,9 +8,8 @@ const unsigned int MaxInstructions = 30;
 
 template <typename ArchT>
 NCodeHook<ArchT>::NCodeHook(bool cleanOnDestruct, HANDLE rwxHeap)
-	: MaxTotalTrampolineSize(ArchT::AbsJumpPatchSize + ArchT::MaxTrampolineSize),
+	: MaxTotalTrampolineSize(ArchT::AbsJumpPatchSize * 2 + ArchT::MaxTrampolineSize),
 	cleanOnDestruct_(cleanOnDestruct),
-	forceAbsJmp_(false), 
 	trampolineHeap(rwxHeap)
 {
 	if(trampolineHeap == NULL || trampolineHeap == INVALID_HANDLE_VALUE)
@@ -28,14 +27,24 @@ NCodeHook<ArchT>::~NCodeHook()
 		HeapDestroy(trampolineHeap);
 	}
 }
+inline opcodeAddr getJmpTarget(ud_t &ud_obj){
+	ud_operand op = ud_obj.operand[0];
+	if(op.type == UD_OP_JIMM){
+		return (opcodeAddr)ud_obj.pc + op.lval.sdword;
+	}else if (op.type == UD_OP_MEM && op.base == UD_R_RIP && op.index == UD_NONE && op.scale == 0){
+		opcodeAddr* memaddr = (opcodeAddr*)((char*)ud_obj.pc + op.lval.sdword);
+		return *memaddr;
+	}
+	return NULL;
+}
 
 template <typename ArchT>
-const unsigned char* NCodeHook<ArchT>::getPatchSite(const unsigned char* codePtr, 
-										unsigned int* patchSize, bool* useAbsJump, void* hookFunc)
+opcodeAddr NCodeHook<ArchT>::getPatchSite(opcodeAddr codePtr, unsigned int* patchSize, bool* useAbsJump, 
+		opcodeAddr trampoline, opcodeAddr& nextBlock, int& branchOffset, int& branchSize, opcodeAddr& branchTarget)
 {
 	// choose jump patch method
 	unsigned int patchMinSize;
-	*useAbsJump = forceAbsJmp_ || architecture_.requiresAbsJump((uintptr_t)codePtr, (uintptr_t)hookFunc);
+	*useAbsJump = architecture_.requiresAbsJump(codePtr, trampoline);
 	if(*useAbsJump)
 		patchMinSize = ArchT::AbsJumpPatchSize;
 	else
@@ -49,27 +58,37 @@ const unsigned char* NCodeHook<ArchT>::getPatchSite(const unsigned char* codePtr
 	/* disassembly loop */
 	ud_set_pc(&ud_obj, (uint64_t)codePtr);
 	unsigned int inslen = 0;
-	while(ud_obj.pc - (uint64_t)codePtr < patchMinSize)
+	while(ud_obj.pc - (uint64_t)codePtr < patchMinSize){
 		//Disassembly errors or jump/calls
 		if ((inslen = ud_disassemble(&ud_obj)) == 0 || 
 				(ud_obj.mnemonic >= UD_Ijo && ud_obj.mnemonic <= UD_Ijmp) ||
 				ud_obj.mnemonic == UD_Icall){
-			//We can handle a first jump; just follow!
+			opcodeAddr target = getJmpTarget(ud_obj);
+			if(target == NULL) //can't identify target :-(
+				return (opcodeAddr)-1;
+			//We can handle a first jmp; just follow!
 			if(ud_obj.pc - inslen == (uint64_t)codePtr && ud_obj.mnemonic == UD_Ijmp){
-				ud_operand op = ud_obj.operand[0];
-				if(op.type == UD_OP_JIMM){
-					return getPatchSite((const unsigned char*)ud_obj.pc 
-						+ op.lval.sdword, patchSize, useAbsJump, hookFunc);
-				}else if (op.type == UD_OP_MEM && op.base == UD_R_RIP && op.index == UD_NONE && op.scale == 0){
-					const unsigned char** memaddr = (const unsigned char**)((char*)ud_obj.pc + op.lval.sdword);
-					return getPatchSite(*memaddr, patchSize, useAbsJump, hookFunc);
-				}
+				return getPatchSite(target, patchSize, useAbsJump, trampoline, nextBlock, 
+					branchOffset, branchSize, branchTarget);
+			//we can also handle a last jmp; just send back where you need to jump to
+			}else if(ud_obj.pc >= patchMinSize && ud_obj.mnemonic == UD_Ijmp){
+				nextBlock = target;
+				*patchSize = (unsigned int)(ud_obj.pc - (uint64_t)codePtr);
+				return codePtr;
+			}else{
+				if(branchSize != -1)
+					return (opcodeAddr)-1; //we're not handling multiple branches (yet)
+				//near jmps (starting with 0x0f) are 2 bytes, short jumps are 1 byte
+				branchSize = ((opcodeAddr)ud_obj.pc - inslen)[0] == 0x0f ? 2 : 1;
+				branchOffset = (int)((opcodeAddr)ud_obj.pc - codePtr - inslen + branchSize);
+				branchTarget = target;
 			}
-			return (const unsigned char*)-1;
 		}
+	}
 
 	// if we were unable to disassemble enough instructions we fail
-	if (ud_obj.pc - (uint64_t)codePtr < patchMinSize) return (const unsigned char*)-1;
+	if (ud_obj.pc - (uint64_t)codePtr < patchMinSize)
+		return (opcodeAddr)-1;
 
 	*patchSize = (unsigned int)(ud_obj.pc - (uint64_t)codePtr);
 	return codePtr;
@@ -86,8 +105,16 @@ U NCodeHook<ArchT>::createHook(U originalFunc, U hookFunc)
 	bool useAbsJump = false;
 
 	// check if this is just a trampoline, and whether we need to follow or replace
-	originalFunc = (U)getPatchSite((const unsigned char*)originalFunc, &patchSize, &useAbsJump, hookFunc);
-	
+	opcodeAddr trampolineAddr = (opcodeAddr)HeapAlloc(trampolineHeap, 0, MaxTotalTrampolineSize);
+	opcodeAddr nextBlock = NULL;
+	int branchOffset = -1;
+	int branchSize = -1;
+	opcodeAddr branchTarget = NULL;
+	originalFunc = (U)getPatchSite((opcodeAddr)originalFunc, &patchSize, 
+			&useAbsJump, trampolineAddr, nextBlock, branchOffset, branchSize, branchTarget);
+	if(nextBlock == NULL)
+		nextBlock = (opcodeAddr)originalFunc + patchSize;
+
 	// error while determining offset?
 	if ((char*)originalFunc == (char*)-1) return false;
 
@@ -95,18 +122,24 @@ U NCodeHook<ArchT>::createHook(U originalFunc, U hookFunc)
 	BOOL retVal = VirtualProtect((LPVOID)originalFunc, ArchT::MaxTrampolineSize, PAGE_EXECUTE_READWRITE, &oldProtect);
 	if (!retVal) return false;
 
-	// get trampoline memory and copy instructions to trampoline
-	uintptr_t trampolineAddr = (uintptr_t)HeapAlloc(trampolineHeap, 0, MaxTotalTrampolineSize);
+	// copy instructions to trampoline
 	memcpy((void*)trampolineAddr, (void*)originalFunc, patchSize);
-	if (useAbsJump)
-	{
-		architecture_.writeAbsJump((uintptr_t)originalFunc, (uintptr_t)hookFunc);
-		architecture_.writeAbsJump(trampolineAddr + patchSize, (uintptr_t)originalFunc + patchSize);
-	}
-	else
-	{
-		architecture_.writeNearJump((uintptr_t)originalFunc, (uintptr_t)hookFunc);
-		architecture_.writeNearJump(trampolineAddr + patchSize, (uintptr_t)originalFunc + patchSize);
+	architecture_.writeJump((opcodeAddr)originalFunc, (opcodeAddr)hookFunc);
+	architecture_.writeJump(trampolineAddr + patchSize, nextBlock);
+
+	// relink branch by adding another jmp to the end of the trampoline used only by the branch:
+	// the trampoline will look like this:   
+	// nop; nop; jge branchJump; nop; jmp nextBlock; branchJump: jmp branchTarget
+	if(branchTarget != NULL){
+		//find out what value to write and where
+		opcodeAddr branchJump = trampolineAddr + ArchT::AbsJumpPatchSize + ArchT::MaxTrampolineSize;
+		size_t branchDistance = branchJump - (trampolineAddr + branchOffset + branchSize);
+		//write it, whether 8 bit or 16 bit
+		if(branchSize == 1)
+			trampolineAddr[branchOffset] = (BYTE)branchDistance;
+		else
+			((unsigned short*)trampolineAddr + branchOffset)[0] = (unsigned short)branchDistance;
+		architecture_.writeJump(branchJump, branchTarget); // now write jump from branch to final branch target
 	}
 
 	DWORD dummy;
@@ -115,8 +148,8 @@ U NCodeHook<ArchT>::createHook(U originalFunc, U hookFunc)
 	FlushInstructionCache(GetCurrentProcess(), (LPCVOID)trampolineAddr, MaxTotalTrampolineSize);
 	FlushInstructionCache(GetCurrentProcess(), (LPCVOID)originalFunc, useAbsJump ? ArchT::AbsJumpPatchSize : ArchT::NearJumpPatchSize);
 	
-	NCodeHookItem item((uintptr_t)originalFunc, (uintptr_t)hookFunc, trampolineAddr, patchSize);
-	hookedFunctions_.insert(make_pair((uintptr_t)hookFunc, item));
+	NCodeHookItem item((opcodeAddr)originalFunc, (opcodeAddr)hookFunc, trampolineAddr, patchSize);
+	hookedFunctions_.insert(make_pair((opcodeAddr)hookFunc, item));
 
 	return (U)trampolineAddr;
 }
@@ -138,7 +171,7 @@ template <typename U>
 bool NCodeHook<ArchT>::removeHook(U address)
 {
 	// remove hooked function again, address points to the HOOK function!
-	map<uintptr_t, NCodeHookItem>::const_iterator result = hookedFunctions_.find((uintptr_t)address);
+	map<opcodeAddr, NCodeHookItem>::const_iterator result = hookedFunctions_.find((opcodeAddr)address);
 	if (result != hookedFunctions_.end())
 		return removeHook(result->second);
 	return true;
@@ -162,12 +195,10 @@ bool NCodeHook<ArchT>::removeHook(NCodeHookItem item)
 	return true;
 }
 
-template <typename ArchT>
-uintptr_t NCodeHook<ArchT>::getFreeTrampoline()
-{
+template <typename ArchT> opcodeAddr NCodeHook<ArchT>::getFreeTrampoline(){
 	if (freeTrampolines_.empty()) throw exception("No trampoline space available!");
-	set<uintptr_t>::iterator it = freeTrampolines_.begin();
-	uintptr_t result = *it;
+	set<opcodeAddr>::iterator it = freeTrampolines_.begin();
+	opcodeAddr result = *it;
 	freeTrampolines_.erase(it);
 	return result;
 }
