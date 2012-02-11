@@ -63,11 +63,12 @@ BOOL hookDllApi(HMODULE dllHandle);
 
 //Types for dynamic function definitions
 typedef void* (WINAPI *NoArgFunc)();
-typedef HMODULE (WINAPI *OneArgFunc)(void*); //For LoadLibrary
-typedef HMODULE (WINAPI *ThreeArgFunc)(void*,void*,void*); //For LoadLibraryEx
+typedef HMODULE (WINAPI *OneArgFunc)(void*); //For setEax
+typedef HMODULE (WINAPI *ThreeArgFunc)(void*,void*,void*); //For callApi
 typedef void** (WINAPI *hookArgFunc)();
+typedef NTSTATUS (NTAPI *LdrLoadDllHookFunc)(PWCHAR, ULONG, PVOID, PHANDLE);
 
-//MICROSOFT DEFINES from MSDN - because my local win SDK does not have a complete set
+//MICROSOFT DEFINES from MSDN - because win SDK does not have a complete set
 /*
 typedef struct _LIST_ENTRY {
   struct _LIST_ENTRY *Flink;

@@ -36,6 +36,8 @@ hookArgFunc getHookArg = NULL;
 OneArgFunc setEax = NULL;
 //Helper function to get a pointer to the PEB
 NoArgFunc getPEB = NULL;
+//For hooking new DLL loads
+LdrLoadDllHookFunc realLdrLoadDll = NULL;
 
 //For allocating RWX memory,
 HANDLE rwxHeap = NULL;
@@ -304,27 +306,12 @@ DWORD WINAPI CreateProcessInternalWHook(PVOID unknown1, LPCWSTR lpApplicationNam
 	return retval;
 }
 
-//Hook for LoadLibraryA, LoadLibraryExA, LoadLibraryW, and LoadLibraryExW, to ensure new
-//libraries are hooked. The hook argument passed must be an integer number of arguments
-void* LoadLibraryHook(PVOID lpLibFileName, HANDLE hFile, PVOID dwFlags){
-	void** hookArgs = (*getHookArg)(); // opcode magic to get the hook arg pointer
-	HMODULE mod;
-	NoArgFunc retfunc = (NoArgFunc)hookArgs[0];
-
-	if(hookArgs[0] == popRet1arg){ // LoadLibrary
-		mod = ((OneArgFunc)hookArgs[1])(lpLibFileName);
-		GetLastError();
-	}else if(hookArgs[0] == popRet3arg){// LoadLibraryEx
-		mod = ((ThreeArgFunc)hookArgs[1])(lpLibFileName, hFile, dwFlags);
-	}else{
-		ExitProcess(ERROR_ACCESS_DENIED);//this shouldn't happen
-	}
-	if(mod != NULL)
-		hookDllApi(mod); //We got a new library. Hook it if we need to.
-
-	setEax(mod);
-	//Now cleanup and return
-	return retfunc();
+//Hook for ntdll!LdrLoadDll - ensures newly loaded libraries are hooked
+NTSTATUS NTAPI LdrLoadDllHook(PWCHAR PathToFile, ULONG Flags, PVOID ModuleFileName, PHANDLE ModuleHandle){
+	NTSTATUS result = realLdrLoadDll(PathToFile, Flags, ModuleFileName, ModuleHandle);
+	if(ModuleHandle != NULL && *ModuleHandle != NULL)
+		hookDllApi((HMODULE)*ModuleHandle);
+	return result;
 }
 
 ////////////////////////////// Setup Functions //////////////////////////////////////
@@ -402,20 +389,13 @@ BOOL prepHookApi(){
 	}
 
 	HMODULE colonel = GetModuleHandleA("kernel32");
-	//Hook LoadLibrary and CreateProcessInternal calls
+	//Hook CreateProcessInternal calls to ensure apihook is loaded into new processes
 	CreateProcessInternalWReal = hooker->createHook<CreateProcessInternalWFunc>((CreateProcessInternalWFunc)GetProcAddress(
 		colonel, "CreateProcessInternalW"), (CreateProcessInternalWFunc)CreateProcessInternalWHook);
 
-	//Setup LoadLibrary return functions to fix the function tails. Stupid compiler.
-	popRet1arg = (PBYTE)HeapAlloc(rwxHeap, 0, sizeof(POP_RET_ONE));
-	MoveMemory(popRet1arg, POP_RET_ONE, sizeof(POP_RET_ONE));
-	makeHook(GetProcAddress(colonel, "LoadLibraryA"), popRet1arg, &LoadLibraryHook);
-	makeHook(GetProcAddress(colonel, "LoadLibraryW"), popRet1arg, &LoadLibraryHook);
-	popRet3arg = (PBYTE)HeapAlloc(rwxHeap, 0, sizeof(POP_RET_THREE));
-	MoveMemory(popRet3arg, POP_RET_THREE, sizeof(POP_RET_THREE));
-	makeHook(GetProcAddress(colonel, "LoadLibraryExA"), popRet3arg, &LoadLibraryHook);
-	makeHook(GetProcAddress(colonel, "LoadLibraryExW"), popRet3arg, &LoadLibraryHook);
-
+	//Setup LdrLoadDll to ensure signatures are loaded on dynamically-loaded DLLs
+	realLdrLoadDll = hooker->createHook<LdrLoadDllHookFunc>((LdrLoadDllHookFunc)
+		GetProcAddress(GetModuleHandleA("ntdll"),"LdrLoadDll"), LdrLoadDllHook);
 	return TRUE;
 }
 
