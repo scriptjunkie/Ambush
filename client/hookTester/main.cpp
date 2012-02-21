@@ -92,14 +92,14 @@ int CALLBACK WinMain(HINSTANCE,HINSTANCE,LPSTR,int){
 	if(ask("Start cmd")){
 		CreateProcessA(NULL,cmdline,NULL,NULL,0,0,NULL,NULL,&start,&proc);
 		HMODULE hmods[100];
-		DWORD bytes;
+		DWORD bytes = sizeof(hmods);
 		CHAR modname[MAX_PATH];
-		EnumProcessModules(proc.hProcess, hmods, sizeof(hmods), &bytes);
 		bool found = false;
-		for(int i = 0; i < (bytes / sizeof(HMODULE)); i++)
-			if(GetModuleFileNameExA(proc.hProcess, hmods[i], modname, MAX_PATH))
-				if(strstr(modname, "apihook") != NULL)
-					found = true;
+		if(EnumProcessModules(proc.hProcess, hmods, sizeof(hmods), &bytes))
+			for(int i = 0; i < (bytes / sizeof(HMODULE)); i++)
+				if(GetModuleFileNameExA(proc.hProcess, hmods[i], modname, MAX_PATH))
+					if(strstr(modname, "apihook") != NULL)
+						found = true;
 		if(found == false)
 			error("Process injection failed!");
 		TerminateProcess(proc.hProcess, 0);

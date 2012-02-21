@@ -317,7 +317,7 @@ NTSTATUS NTAPI LdrLoadDllHook(PWCHAR PathToFile, ULONG Flags, PVOID ModuleFileNa
 ////////////////////////////// Setup Functions //////////////////////////////////////
 
 //Makes a hook of an arbitrary function that calls hook0 with a given argument using a springboard
-BOOL makeHook(void* origProcAddr, void* farg, void* hook){
+bool makeHook(void* origProcAddr, void* farg, void* hook){
 	//args = [arg, origFunc]
 	void** args = (void**)HeapAlloc(rwHeap, 0, sizeof(void*)*2);
 	args[0] = farg;
@@ -325,9 +325,8 @@ BOOL makeHook(void* origProcAddr, void* farg, void* hook){
 	//Now make springboard
 	HOOKAPI_SPRINGBOARD* springboard = getSpringboard(args, hook, rwxHeap);
 	if(springboard == NULL)
-		return FALSE;
-	args[1] = hooker->createHook<NoArgFunc>((NoArgFunc)origProcAddr, (NoArgFunc)springboard);
-	return TRUE;
+		return false;
+	return hooker->createHook<NoArgFunc>((NoArgFunc)origProcAddr, (NoArgFunc)springboard, (NoArgFunc *)&(args[1]));
 }
 
 //Prepares some memory items we'll need before calling makeHook on an arbitrary function
@@ -390,12 +389,13 @@ BOOL prepHookApi(){
 
 	HMODULE colonel = GetModuleHandleA("kernel32");
 	//Hook CreateProcessInternal calls to ensure apihook is loaded into new processes
-	CreateProcessInternalWReal = hooker->createHook<CreateProcessInternalWFunc>((CreateProcessInternalWFunc)GetProcAddress(
-		colonel, "CreateProcessInternalW"), (CreateProcessInternalWFunc)CreateProcessInternalWHook);
+	hooker->createHook<CreateProcessInternalWFunc>((CreateProcessInternalWFunc)
+		GetProcAddress(colonel, "CreateProcessInternalW"), 
+		(CreateProcessInternalWFunc)CreateProcessInternalWHook, &CreateProcessInternalWReal);
 
 	//Setup LdrLoadDll to ensure signatures are loaded on dynamically-loaded DLLs
-	realLdrLoadDll = hooker->createHook<LdrLoadDllHookFunc>((LdrLoadDllHookFunc)
-		GetProcAddress(GetModuleHandleA("ntdll"),"LdrLoadDll"), LdrLoadDllHook);
+	hooker->createHook<LdrLoadDllHookFunc>((LdrLoadDllHookFunc)
+		GetProcAddress(GetModuleHandleA("ntdll"),"LdrLoadDll"), LdrLoadDllHook, &realLdrLoadDll);
 	return TRUE;
 }
 
@@ -409,12 +409,8 @@ BOOL hookDllApi(HMODULE dllHandle){
 	for(size_t i = 0; i < dllHandlesHooked; i++)
 		if(dllHandles[i] == dllHandle)
 			return TRUE;
-	if(dllHandlesHooked != 0 && (dllHandlesHooked % 32) == 0){  //Out of mem
-		void* newHandles = HeapAlloc(rwHeap, 0, (dllHandlesHooked + 32) * sizeof(HMODULE)); //get more
-		MoveMemory(newHandles, dllHandles, dllHandlesHooked * sizeof(HMODULE)); // copy over
-		HeapFree(rwHeap, 0, dllHandles); // release old
-		dllHandles = (HMODULE*)newHandles; // tada!
-	}
+	if(dllHandlesHooked != 0 && (dllHandlesHooked % 32) == 0)  //Out of mem - realloc
+		dllHandles = (HMODULE*)HeapReAlloc(rwHeap, 0, dllHandles, (dllHandlesHooked + 32) * sizeof(HMODULE));
 	dllHandles[dllHandlesHooked++] = dllHandle;
 
 	//Get DLL name

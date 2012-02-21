@@ -93,18 +93,15 @@ public:
 	NCodeHook(bool cleanOnDestruct=true, HANDLE rwxHeap = NULL);
 	~NCodeHook();
 
-	template <typename U> U createHook(U originalFunc, U hookFunc);
-	template <typename U> U createHookByName(const std::string& dll, const std::string& funcName, U newFunc);
-	template <typename U> bool removeHook(U address);
+	template <typename U> bool createHook(U originalFunc, U hookFunc, U* hookFunctionAddr);
 
 private:
 	// get rid of useless compiler warning C4512 by making operator= private
 	NCodeHook& operator=(const NCodeHook&);
 
-	opcodeAddr getFreeTrampoline();
-	bool removeHook(NCodeHookItem item);
 	opcodeAddr getPatchSite(opcodeAddr codePtr, unsigned int* patchSize, bool* useAbsJump, 
-		opcodeAddr hookFunc, opcodeAddr& nextBlock, int& branchOffset, int& branchSize, opcodeAddr& branchTarget);
+		opcodeAddr hookFunc, opcodeAddr& nextBlock, int& branchOffset, int& branchSize, 
+		opcodeAddr& branchTarget, opcodeAddr*& swapAddr, unsigned short *& winapiPatchPoint);
 	HANDLE trampolineHeap;
 	std::map<opcodeAddr, NCodeHookItem> hookedFunctions_;
 	const unsigned int MaxTotalTrampolineSize;
