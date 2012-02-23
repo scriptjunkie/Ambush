@@ -178,10 +178,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\NCodeHookItem.cpp"
-				>
-			</File>
-			<File
 				RelativePath=".\reporting.cpp"
 				>
 			</File>
@@ -249,10 +245,6 @@
 			</File>
 			<File
 				RelativePath=".\NCodeHook.h"
-				>
-			</File>
-			<File
-				RelativePath=".\NCodeHookItem.h"
 				>
 			</File>
 			<File

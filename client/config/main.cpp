@@ -101,19 +101,28 @@ bool getFile(HINTERNET connection, LPCWCHAR path, const char * filename){
 
 	// Create an HTTP Request handle.
 	HINTERNET hRequest = NULL;
-	if (connection)
+	if (connection){
 		hRequest = WinHttpOpenRequest( connection, L"GET", path, 
 				NULL, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES,0);
+	}else{
+		printf("Error - WinHttpConnect %u \n", GetLastError());
+		return false;
+	}
 	BOOL  bResults = FALSE;
 	if (hRequest){
 		bResults = WinHttpSendRequest( hRequest, NULL, 0, NULL, 0, 0, 0);
 	}else {
-		printf( "Error - WinHttpSendRequest %u .\n", GetLastError());
+		printf( "Error - WinHttpOpenRequest %u .\n", GetLastError());
 		return false;
 	}
+
 	if (bResults){
 		bResults = WinHttpReceiveResponse( hRequest, NULL);
 	}else {
+		printf( "Error - WinHttpSendRequest %u .\n", GetLastError());
+		return false;
+	}
+	if(bResults == FALSE){
 		printf( "Error - WinHttpReceiveResponse %u .\n", GetLastError());
 		return false;
 	}
@@ -274,13 +283,6 @@ int main(int argc, char** argv){
 		GetModuleHandleA("kernel32"),"IsWow64Process");
 	if(isWow == NULL || isWow(GetCurrentProcess(), &is64bit) == 0)
 		is64bit = FALSE;
-	//Get 64 bit values
-	//If is64
-	PVOID OldValue;
-	Wow64DisableWow64FsRedirectionFunc disableWow = (Wow64DisableWow64FsRedirectionFunc)GetProcAddress(
-		GetModuleHandleA("kernel32"),"Wow64DisableWow64FsRedirection");
-	if( disableWow )
-		disableWow(&OldValue);
 	if(is64bit){
 		RegOpenKeyExA(HKEY_LOCAL_MACHINE,"Software\\Microsoft\\Windows NT\\CurrentVersion\\Windows",
 				0,KEY_QUERY_VALUE|KEY_SET_VALUE|KEY_WOW64_64KEY,&winkey64);
@@ -401,6 +403,7 @@ int main(int argc, char** argv){
 			cerr << "Error unscheduling update task.\n";
 	}else if(command.compare("update") == 0){
 		doUpdate();
+		Sleep(1000);
 		return 0;
 	}else{
 		die("Unknown command");

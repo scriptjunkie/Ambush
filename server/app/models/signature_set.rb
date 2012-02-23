@@ -54,7 +54,6 @@ class SignatureSet < ActiveRecord::Base
 				numdlls += 1
 			end
 		end
-		return '' if numdlls == 0
 
 		out << [numdlls, mname.length].pack("V*") + mname + temp
 		# version, serialNumber, numdlls, pipeNameLen, pipeName, dlls[]

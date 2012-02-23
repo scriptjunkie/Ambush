@@ -295,8 +295,11 @@ DWORD WINAPI CreateProcessInternalWHook(PVOID unknown1, LPCWSTR lpApplicationNam
 		bInheritHandles, dwCreationFlags | CREATE_SUSPENDED, lpEnvironment, lpCurrentDirectory, lpStartupInfo, lpProcessInformation, unknown2);
 
 	// If something weird or bad or broken is happening, don't continue
-	if(retval == 0 || unknown1 != 0 || unknown2 != 0)
+	if(retval == 0 || unknown1 != 0 || unknown2 != 0){
+		if(!alreadySuspended)
+			ResumeThread(lpProcessInformation->hThread);
 		return retval;
+	}
 	
 	disableAlerts();
 	dll_inject_load(lpProcessInformation->dwProcessId); // Try msf-style cross-arch inject
@@ -341,9 +344,9 @@ BOOL prepHookApi(){
 
 	//Our DLL-wide hooker, per-arch
 	#ifdef _M_X64
-	hooker = new NCodeHook<ArchitectureX64> (false,rwxHeap);
+	hooker = new NCodeHook<ArchitectureX64> (rwxHeap);
 	#else
-	hooker = new NCodeHook<ArchitectureIA32>(false,rwxHeap);
+	hooker = new NCodeHook<ArchitectureIA32>(rwxHeap);
 	#endif
 	dllHandles = (HMODULE*)HeapAlloc(rwHeap, 0, 32 * sizeof(HMODULE));
 
@@ -468,7 +471,6 @@ bool hookAllDlls(){
 }
 //Post-DllMain-init. Doesn't really take an arg, just for CreateThread
 DWORD WINAPI postInit(PVOID){
-	hookAllDlls(); //Get any DLL's loaded after us
 	return checkLogging(); //Setup a log server for this system or just check in
 }
 

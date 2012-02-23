@@ -597,8 +597,8 @@ BOOL injectPrep(){
 	for(size -= 1; filename[size] != '\\' && size != 0; size--)
 		filename[size] = 0;
 	strcat_s(filename,"apihook.dll");
-	GetShortPathNameA(filename, shortDllPath, sizeof(shortDllPath));
 
+	GetShortPathNameA(filename, shortDllPath, sizeof(shortDllPath));
 	//Get 32 bit loadlibrary
 	loadDllx86CodeSize = sizeof(load_library_x86) + lstrlenA(shortDllPath);
 	loadDllx86Code = (PBYTE)HeapAlloc(rwHeap, 0, loadDllx86CodeSize);

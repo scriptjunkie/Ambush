@@ -1,17 +1,14 @@
 #pragma once 
-
 #include <iostream>
 #include <set>
 #include <map>
 #include <Windows.h>
-#include "NCodeHookItem.h"
 #include "udis/types.h"
 #include "udis/extern.h"
 #include "udis/itab.h"
 
-
-class ArchitectureCommon
-{
+typedef unsigned char * opcodeAddr;
+class ArchitectureCommon{
 public:
 	ArchitectureCommon() {};
 	~ArchitectureCommon() {};
@@ -32,8 +29,7 @@ public:
 	virtual void writeAbsJump(opcodeAddr from, opcodeAddr to) =0;
 };
 
-class ArchitectureIA32 : public ArchitectureCommon
-{
+class ArchitectureIA32 : public ArchitectureCommon{
 public:
 	ArchitectureIA32() {};
 	~ArchitectureIA32() {};
@@ -64,8 +60,7 @@ public:
 	}
 };
 
-class ArchitectureX64 : public ArchitectureIA32
-{
+class ArchitectureX64 : public ArchitectureIA32{
 public:
 	ArchitectureX64() {};
 	~ArchitectureX64() {};
@@ -86,11 +81,10 @@ public:
 };
 
 template <typename ArchT>
-class NCodeHook
-{
+class NCodeHook{
 public:
 
-	NCodeHook(bool cleanOnDestruct=true, HANDLE rwxHeap = NULL);
+	NCodeHook(HANDLE rwxHeap = NULL);
 	~NCodeHook();
 
 	template <typename U> bool createHook(U originalFunc, U hookFunc, U* hookFunctionAddr);
@@ -103,8 +97,6 @@ private:
 		opcodeAddr hookFunc, opcodeAddr& nextBlock, int& branchOffset, int& branchSize, 
 		opcodeAddr& branchTarget, opcodeAddr*& swapAddr, unsigned short *& winapiPatchPoint);
 	HANDLE trampolineHeap;
-	std::map<opcodeAddr, NCodeHookItem> hookedFunctions_;
 	const unsigned int MaxTotalTrampolineSize;
-	bool cleanOnDestruct_;
 	ArchT architecture_;
 };

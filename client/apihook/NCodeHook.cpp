@@ -3,23 +3,13 @@
 using namespace std;
 
 template <typename ArchT>
-NCodeHook<ArchT>::NCodeHook(bool cleanOnDestruct, HANDLE rwxHeap)
+NCodeHook<ArchT>::NCodeHook(HANDLE rwxHeap)
 	: MaxTotalTrampolineSize(ArchT::AbsJumpPatchSize * 2 + ArchT::MaxTrampolineSize),
-	cleanOnDestruct_(cleanOnDestruct),
 	trampolineHeap(rwxHeap){
 	if(trampolineHeap == NULL || trampolineHeap == INVALID_HANDLE_VALUE)
 		trampolineHeap = HeapCreate(HEAP_CREATE_ENABLE_EXECUTE, 0, 0);
 }
 
-template <typename ArchT>
-NCodeHook<ArchT>::~NCodeHook(){
-	if (cleanOnDestruct_)	{
-		// restore all hooks and free memory (if possible)
-		for(size_t i = hookedFunctions_.size(); i > 0; i--)
-			removeHook(hookedFunctions_[i - 1]);
-		HeapDestroy(trampolineHeap);
-	}
-}
 inline opcodeAddr getJmpTarget(ud_t &ud_obj){
 	ud_operand op = ud_obj.operand[0];
 	if(op.type == UD_OP_JIMM){
@@ -186,9 +176,6 @@ bool NCodeHook<ArchT>::createHook(U originalFunc, U hookFunc, U* trampAddr){
 
 	FlushInstructionCache(GetCurrentProcess(), (LPCVOID)trampolineAddr, MaxTotalTrampolineSize);
 	FlushInstructionCache(GetCurrentProcess(), (LPCVOID)originalFunc, useAbsJump ? ArchT::AbsJumpPatchSize : ArchT::NearJumpPatchSize);
-	
-	NCodeHookItem item((opcodeAddr)originalFunc, (opcodeAddr)hookFunc, trampolineAddr, patchSize);
-	hookedFunctions_.insert(make_pair((opcodeAddr)hookFunc, item));
 
 	return true;
 }
