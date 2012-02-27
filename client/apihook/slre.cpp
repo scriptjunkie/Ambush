@@ -547,6 +547,8 @@ slre_match(const struct slre *r, const char *buf, int len,
 {
 	int	i, ofs = 0, res = 0;
 
+	if (r == NULL)
+		return 1;
 	if (r->anchored) {
 		res = match(r, 0, buf, len, &ofs, caps);
 	} else {
@@ -558,111 +560,3 @@ slre_match(const struct slre *r, const char *buf, int len,
 
 	return (res);
 }
-
-#ifdef TEST
-
-static void
-print_character_set(FILE *fp, const unsigned char *p, int len)
-{
-	int	i;
-
-	for (i = 0; i < len; i++) {
-		if (i > 0)
-			(void) fputc(',', fp);
-		if (p[i] == 0) {
-			i++;
-			if (p[i] == 0)
-				(void) fprintf(fp, "\\x%02x", p[i]);
-			else
-				(void) fprintf(fp, "%s", opcodes[p[i]].name);
-		} else if (isprint(p[i])) {
-			(void) fputc(p[i], fp);
-		} else {
-			(void) fprintf(fp,"\\x%02x", p[i]);
-		}
-	}
-}
-
-void
-slre_dump(const struct slre *r, FILE *fp)
-{
-	int	i, j, ch, op, pc;
-
-	for (pc = 0; pc < r->code_size; pc++) {
-
-		op = r->code[pc];
-		(void) fprintf(fp, "%3d %s ", pc, opcodes[op].name);
-
-		for (i = 0; opcodes[op].flags[i] != '\0'; i++)
-			switch (opcodes[op].flags[i]) {
-			case 'i':
-				(void) fprintf(fp, "%d ", r->code[pc + 1]);
-				pc++;
-				break;
-			case 'o':
-				(void) fprintf(fp, "%d ",
-				    pc + r->code[pc + 1] - i);
-				pc++;
-				break;
-			case 'D':
-				print_character_set(fp, r->data +
-				    r->code[pc + 1], r->code[pc + 2]);
-				pc += 2;
-				break;
-			case 'd':
-				(void) fputc('"', fp);
-				for (j = 0; j < r->code[pc + 2]; j++) {
-					ch = r->data[r->code[pc + 1] + j];
-					if (isprint(ch))
-						(void) fputc(ch, fp);
-					else
-						(void) fprintf(fp,"\\x%02x",ch);
-				}
-				(void) fputc('"', fp);
-				pc += 2;
-				break;
-			}
-
-		(void) fputc('\n', fp);
-	}
-}
-
-int main(int argc, char *argv[])
-{
-	struct slre	slre;
-	struct cap	caps[20];
-	char		data[1 * 1024 * 1024];
-	FILE		*fp;
-	int		i, count, res, len;
-
-	if (argc < 3) {
-		printf("Usage: %s 'slre' <file> [count]\n", argv[0]);
-	} else if ((fp = fopen(argv[2], "rb")) == NULL) {
-		printf("Error: cannot open %s:%s\n", argv[2], strerror(errno));
-	} else if (!slre_compile(&slre, argv[1])) {
-		printf("Error compiling slre: %s\n", slre.err_str);
-	} else {
-		slre_dump(&slre, stderr);
-
-		(void) memset(caps, 0, sizeof(caps));
-
-		/* Read first 128K of file */
-		len = fread(data, 1, sizeof(data), fp);
-		(void) fclose(fp);
-
-		res = 0;
-		count = argc > 3 ? atoi(argv[3]) : 1;
-		for (i = 0; i < count; i++)
-			res = slre_match(&slre, data, len, caps);
-
-		printf("Result: %d\n", res);
-
-		for (i = 0; i < 20; i++)
-			if (caps[i].len > 0)
-				printf("Substring %d: [%.*s]\n", i,
-				    caps[i].len, caps[i].ptr);
-	}
-
-	return (0);
-}
-#endif /* TEST */

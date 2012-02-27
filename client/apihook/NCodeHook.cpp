@@ -117,6 +117,8 @@ opcodeAddr NCodeHook<ArchT>::getPatchSite(opcodeAddr codePtr, // where to start
 template <typename ArchT>
 template <typename U> 
 bool NCodeHook<ArchT>::createHook(U originalFunc, U hookFunc, U* trampAddr){
+	if(originalFunc == NULL) //whoops
+		return false;
 	// choose jump patch method
 	unsigned int patchSize;
 	bool useAbsJump = false;

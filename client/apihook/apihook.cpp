@@ -81,8 +81,9 @@ template<typename T, typename C>
 void ensureSlreCompiled(C* arg, int (*compile)(T*,const C*)){
 	if(compiledSignatures.count(arg) == 0){
 		T* regex = (T*)HeapAlloc(rwHeap, HEAP_ZERO_MEMORY, sizeof(T));
-		compile(regex, arg);
 		compiledSignatures[arg] = (slre*)regex;
+		if(regex != NULL)
+			compile(regex, arg);
 	}
 }
 
@@ -209,6 +210,8 @@ inline bool matchesProcess(HOOKAPI_ACTION_CONF* action){
 		for (DWORD i = 0; i < exeNameLen; i++)
 			exeFileName[i] = (char)tolower(exeFileName[ i ]); // lower-case it!
 		slre* regex = (slre*)HeapAlloc(rwHeap, HEAP_ZERO_MEMORY, sizeof(slre));
+		if(regex == NULL)
+			return true; // Fail to match
 		slre_compile(regex, action->exePath);
 		if(slre_match(regex, exeFileName, exeNameLen, NULL) == 1)
 			compiledSignatures[action] = PROC_MATCH;
@@ -321,8 +324,12 @@ NTSTATUS NTAPI LdrLoadDllHook(PWCHAR PathToFile, ULONG Flags, PVOID ModuleFileNa
 
 //Makes a hook of an arbitrary function that calls hook0 with a given argument using a springboard
 bool makeHook(void* origProcAddr, void* farg, void* hook){
+	if(origProcAddr == NULL)
+		return false;
 	//args = [arg, origFunc]
 	void** args = (void**)HeapAlloc(rwHeap, 0, sizeof(void*)*2);
+	if(args == NULL)
+		return false;
 	args[0] = farg;
 
 	//Now make springboard
@@ -334,12 +341,14 @@ bool makeHook(void* origProcAddr, void* farg, void* hook){
 
 //Prepares some memory items we'll need before calling makeHook on an arbitrary function
 //and loads configuration into memory. THIS IS RUN IN DLLMAIN AND CANNOT LOAD LIBRARIES!
-BOOL prepHookApi(){
+bool prepHookApi(){
 	//Setup TLS alert enable/disable (disabled by default)
 	setupAlertsDisabled();
 
 	//get heaps and allocate dllHandles list
 	rwHeap = GetProcessHeap();
+	if(rwHeap == NULL)
+		return false;
 	rwxHeap = HeapCreate(HEAP_CREATE_ENABLE_EXECUTE,0,0);
 
 	//Our DLL-wide hooker, per-arch
@@ -349,6 +358,8 @@ BOOL prepHookApi(){
 	hooker = new NCodeHook<ArchitectureIA32>(rwxHeap);
 	#endif
 	dllHandles = (HMODULE*)HeapAlloc(rwHeap, 0, 32 * sizeof(HMODULE));
+	if(dllHandles == NULL) //no memory. c'mon!
+		return false;
 
 	//Find configuration file from same binary directory as this file
 	char filename[1000];
@@ -366,28 +377,29 @@ BOOL prepHookApi(){
 		(apiConf = (HOOKAPI_CONF*)HeapAlloc(rwHeap,0,fileSize)) == NULL ||
 		ReadFile(sigFileHandle,apiConf,fileSize,&dontcare,NULL) == FALSE){
 			CloseHandle(sigFileHandle);
-			return FALSE;
+			return false;
 	}
 	CloseHandle(sigFileHandle);
 
-	//Setup getHookArg()
+	//Setup getHookArg(), setEax(), getPEB(), and callApi()
 	getHookArg = (hookArgFunc)HeapAlloc(rwxHeap, 0, sizeof(GET_HOOK_ARG));
-	MoveMemory((PCHAR)getHookArg, GET_HOOK_ARG, sizeof(GET_HOOK_ARG)); 
-	//Setup setEax()
 	setEax = (OneArgFunc)HeapAlloc(rwxHeap, 0, sizeof(SET_EAX));
-	MoveMemory((PCHAR)setEax, SET_EAX, sizeof(SET_EAX));
-	//Setup getPEB()
 	getPEB = (NoArgFunc)HeapAlloc(rwxHeap, 0, sizeof(GET_PEB));
-	MoveMemory((PCHAR)getPEB, GET_PEB, sizeof(GET_PEB));
-	//Setup callApi()
 	callApi = (ThreeArgFunc)HeapAlloc(rwxHeap, 0, sizeof(CALL_API));
+	if(getHookArg == NULL || setEax == NULL || getPEB == NULL || callApi == NULL)
+		return false; //no memory. c'mon! This really shouldn't happen with a new heap
+	MoveMemory((PCHAR)getHookArg, GET_HOOK_ARG, sizeof(GET_HOOK_ARG)); 
+	MoveMemory((PCHAR)setEax, SET_EAX, sizeof(SET_EAX));
+	MoveMemory((PCHAR)getPEB, GET_PEB, sizeof(GET_PEB));
 	MoveMemory((PCHAR)callApi, CALL_API, sizeof(CALL_API));
 
 	//Setup stack fixups for returning
 	for(WORD i = 0; i < NUM_STACK_FIXUPS; i++){
 		stackFixups[i] = (NoArgFunc)HeapAlloc(rwxHeap, 0, sizeof(STACK_FIXUP) + 2);
+		if(stackFixups[i] == NULL)
+			return false; //no memory.
 		MoveMemory(stackFixups[i], STACK_FIXUP, sizeof(STACK_FIXUP));
-		*((PWORD)((PBYTE)stackFixups[i] + sizeof(STACK_FIXUP) - 1)) = i * sizeof(void*); //
+		*((PWORD)((PBYTE)stackFixups[i] + sizeof(STACK_FIXUP) - 1)) = i * sizeof(void*); // sets the return value
 	}
 
 	HMODULE colonel = GetModuleHandleA("kernel32");
@@ -399,19 +411,19 @@ BOOL prepHookApi(){
 	//Setup LdrLoadDll to ensure signatures are loaded on dynamically-loaded DLLs
 	hooker->createHook<LdrLoadDllHookFunc>((LdrLoadDllHookFunc)
 		GetProcAddress(GetModuleHandleA("ntdll"),"LdrLoadDll"), LdrLoadDllHook, &realLdrLoadDll);
-	return TRUE;
+	return true;
 }
 
 //This function loads up hooks for a DLL if it has not been hooked before
-BOOL hookDllApi(HMODULE dllHandle){
+bool hookDllApi(HMODULE dllHandle){
 	//Check if valid
 	if(dllHandle == NULL)
-		return FALSE;
+		return false;
 
 	//Check if we've seen it already
 	for(size_t i = 0; i < dllHandlesHooked; i++)
 		if(dllHandles[i] == dllHandle)
-			return TRUE;
+			return true;
 	if(dllHandlesHooked != 0 && (dllHandlesHooked % 32) == 0)  //Out of mem - realloc
 		dllHandles = (HMODULE*)HeapReAlloc(rwHeap, 0, dllHandles, (dllHandlesHooked + 32) * sizeof(HMODULE));
 	dllHandles[dllHandlesHooked++] = dllHandle;
@@ -419,7 +431,8 @@ BOOL hookDllApi(HMODULE dllHandle){
 	//Get DLL name
 	char filename[MAX_PATH+1];
 	char name[MAX_PATH+1];
-	GetModuleFileNameA(dllHandle,filename,sizeof(filename));
+	if(GetModuleFileNameA(dllHandle, filename, sizeof(filename)) == 0)
+		return false; //uhoh - not a DLL?
 	int nameIndex = 0;
 	for(int i = 0; i < sizeof(filename); i++){
 		if(filename[i] == '\\'){
@@ -444,7 +457,7 @@ BOOL hookDllApi(HMODULE dllHandle){
 		dllConf = nextDllConf(dllConf); // next
 	}
 	if(found == false)
-		return FALSE;
+		return false;
 
 	//Don't allow alerts here
 	disableAlerts();
@@ -456,7 +469,7 @@ BOOL hookDllApi(HMODULE dllHandle){
 		function = nextFunctionConf(function); //next
 	}
 	enableAlerts(); //back to normal
-	return TRUE;
+	return true;
 }
 
 //Hook all loaded DLL's
@@ -465,7 +478,7 @@ bool hookAllDlls(){
 	//Walk module list and call hookDllApi for all
 	PLIST_ENTRY moduleListHead = &peb->Ldr->InMemoryOrderModuleList;
 	for(PLIST_ENTRY entry = moduleListHead->Flink;
-		entry != moduleListHead; entry = entry->Flink)
+		entry != NULL && entry != moduleListHead; entry = entry->Flink)
 		hookDllApi((HMODULE)((PLDR_DATA_TABLE_ENTRY)(entry - 1))->DllBase);
 	return true;
 }
@@ -481,7 +494,7 @@ BOOL WINAPI DllMain(HINSTANCE instance, DWORD fdwReason, LPVOID){
 	if(fdwReason != DLL_PROCESS_ATTACH)
 		return TRUE;
 	myDllHandle = instance;
-	if(prepHookApi() == FALSE)
+	if(prepHookApi() == false)
 		return TRUE; //not really, but we want to exit without raising alarms
 
 	hookAllDlls(); //Hook the ones we have now

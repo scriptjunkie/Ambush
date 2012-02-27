@@ -209,12 +209,18 @@ BOOL runLocalServer(HANDLE servPipe){
 
 	//Start winHTTP thread
 	AlertQueueNode* baseNode = (AlertQueueNode*)HeapAlloc(rwHeap,HEAP_ZERO_MEMORY,sizeof(AlertQueueNode));
+	if(baseNode == NULL)
+		return 0; //Uhoh. no memory. we're screwed.
 	baseNode->eventHandle = CreateEvent(NULL,TRUE,FALSE,NULL);
 	CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)HTTPthread, baseNode, 0, NULL);
 	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST); // So we don't drop alerts
 	PHOOKAPI_MESSAGE message;
 	while(true){
 		message = (PHOOKAPI_MESSAGE)HeapAlloc(rwHeap, 0, 2000);
+		if(message == NULL){ //This has got to work. so just wait until it does
+			Sleep(1000);
+			continue;
+		}
 		DisconnectNamedPipe(servPipe); //just in case of previous error
 		//Receive a message
 		if(ConnectNamedPipe(servPipe, NULL) == FALSE && GetLastError() != ERROR_PIPE_CONNECTED){
@@ -256,12 +262,15 @@ BOOL runLocalServer(HANDLE servPipe){
 		if(message->type == START_INFO)
 			continue;
 		//Send rest to server
-		baseNode->next = (AlertQueueNode*)HeapAlloc(rwHeap,HEAP_ZERO_MEMORY,sizeof(AlertQueueNode));
-		AlertQueueNode* oldNode = baseNode;
-		baseNode = baseNode->next;
-		baseNode->eventHandle = CreateEvent(NULL,TRUE,FALSE,NULL);
-		baseNode->message = message; //will be freed by http thread
-		SetEvent(oldNode->eventHandle);
+		PVOID nextNode = HeapAlloc(rwHeap,HEAP_ZERO_MEMORY,sizeof(AlertQueueNode));
+		if(nextNode != NULL){ //ouch. we're probably screwed. But for right now, just ignore
+			baseNode->next = (AlertQueueNode*)nextNode;
+			AlertQueueNode* oldNode = baseNode;
+			baseNode = baseNode->next;
+			baseNode->eventHandle = CreateEvent(NULL,TRUE,FALSE,NULL);
+			baseNode->message = message; //will be freed by http thread
+			SetEvent(oldNode->eventHandle);
+		}
 	}
 }
 
@@ -292,7 +301,8 @@ void sendAlert(HOOKAPI_FUNC_CONF* conf, HOOKAPI_ACTION_CONF* action, void** call
 
 	WCHAR username[UNLEN+1];
 	DWORD userlen = UNLEN+1;
-	GetUserNameW(username, &userlen); // try to get username
+	if(GetUserNameW(username, &userlen) == FALSE)
+		userlen = 0; // try to get username
 	//Prepare a binary string
 	string messageStr;
 	//Add each parameter
@@ -341,7 +351,8 @@ void sendAlert(HOOKAPI_FUNC_CONF* conf, HOOKAPI_ACTION_CONF* action, void** call
 	if(computerName == NULL){
 		GetComputerNameW(NULL, &computerNameLen);
 		computerName = (PWCHAR)HeapAlloc(rwHeap, HEAP_ZERO_MEMORY, computerNameLen * sizeof(WCHAR));
-		GetComputerNameW(computerName, &computerNameLen);
+		if(computerName == NULL || GetComputerNameW(computerName, &computerNameLen) == FALSE)
+			computerNameLen = 0;
 	}
 	DWORD cnsize = computerNameLen * sizeof(WCHAR);
 	messageStr.append((char*) &cnsize, sizeof(DWORD));

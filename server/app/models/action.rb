@@ -55,6 +55,7 @@ class Action < ActiveRecord::Base
 				:severity => simple['severity'], :name => simple['name'], :signature_set_id => set.id)
 		act.exepath = simple['process'] if simple['process']
 		act.modpath = simple['module'] if simple['module']
+		act.retval = simple['retval'] || 0
 
 		#Return address conditions
 		if simple['retprotectMode']

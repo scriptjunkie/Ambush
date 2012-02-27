@@ -59,7 +59,7 @@ inline bool messageEqual(PHOOKAPI_MESSAGE first, PHOOKAPI_MESSAGE second){
 
 //Functions
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved);
-BOOL hookDllApi(HMODULE dllHandle);
+bool hookDllApi(HMODULE dllHandle);
 
 //Types for dynamic function definitions
 typedef void* (WINAPI *NoArgFunc)();
