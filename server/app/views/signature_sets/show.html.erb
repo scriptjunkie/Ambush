@@ -48,6 +48,9 @@ dlls = '<%= h(AvailableDll.all(:order => "name").map{|ad| ad.name}.join(',')) %>
 			name="function" onchange="functionChange();"></select></td>
 			<td><input id="functionCustom" name="functionCustom" type="text" value="custom function" 
 			title="The function you want to signature"></input></td></tr>
+			<tr><td></td>
+			<td><p class="dialog"><input type="radio" name="act[actiontype]" id="av0" value="0" checked>Pre-call</p></td>
+			<td><p class="dialog"><input type="radio" name="act[actiontype]" id="av1" value="1" onclick="checkActionSelect()">Post-call</p></td></tr>
 			<tr><td><h3>Parameters</h3></td></tr>
 		</tbody>
 		</table>

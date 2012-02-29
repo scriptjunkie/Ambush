@@ -193,7 +193,10 @@ function functionChange(functionParams, conditionArgs){
 		});
 }
 function checkActionSelect(){
-	$('[name="act[retval]"]').toggle($('#actionSelect').val() == 'BLOCK');
+	var blocking = $('#actionSelect').val() == 'BLOCK';
+	$('[name="act[retval]"]').toggle(blocking);
+	if(blocking && $('#av1').attr('checked') == "checked")
+		alert("Cannot block post-call!");
 }
 function getCheckedSigs(){
 	var ret=[];
@@ -230,8 +233,16 @@ function editAction(){
 	$('#new').overlay({load:true, fixed: false}).load();
 	fixHeight();
 	$.getJSON('/actions/'+getCheckedSigs()[0]+'.json',function(data){
-		for(key in data.action)
-			$('[name="act['+key+']"]').attr('value', data.action[key]);
+		for(key in data.action){
+			if(key != "actiontype"){
+				$('[name="act['+key+']"]').attr('value', data.action[key]);
+			}else if(data.action[key] == 1){ //actiontype
+				$('#av1').attr('checked', 'checked');
+			}else{ //Default actiontype = 0 or PRE
+				$('#av1').attr('checked', null);
+				$('#av0').attr('checked', 'checked');
+			}
+		}
 		//Get action, severity, and dll
 		$('[name="act[action]"]').attr('value', ['ALERT','BLOCK','KILLTHREAD','KILLPROC'][data.action.action]);
 		$('#severitySelect').val(data.action.severity);

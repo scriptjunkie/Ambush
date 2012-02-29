@@ -113,7 +113,14 @@ int CALLBACK WinMain(HINSTANCE,HINSTANCE,LPSTR,int){
 	}
 
 	//Test killproc with sleepEx 1002
-	if(ask("SleepEx 1002"))
-		SleepEx(1002, FALSE);
-	error("SleepEx(1002,0) Kill process failed!");
+	if(ask("Read PE")){
+		GetModuleFileNameA(NULL, filename, sizeof(filename));
+		HANDLE h = CreateFileA(filename, GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE, 
+			NULL, OPEN_EXISTING, NULL, NULL);
+		char readbuf[1000];
+		DWORD dontcare;
+		ReadFile(h,readbuf,sizeof(readbuf),&dontcare,NULL);
+		CloseHandle(h);
+	}
+	error("Read PE Kill process failed!");
 }
