@@ -224,6 +224,7 @@ inline bool matchesProcess(HOOKAPI_ACTION_CONF* action){
 
 // Evaluates all actions of a function, taking action if necessary
 bool actionsBlock(HOOKAPI_FUNC_CONF* conf, void** calledArgs, DWORD type, void** retval){
+	__try{
 	HOOKAPI_ACTION_CONF* action = functionConfActions(conf);
 	for(unsigned int i = 0; i < conf->numActions; i++){
 		if(action->type == type && matchesProcess(action) == true // Should check this process?
@@ -248,6 +249,8 @@ bool actionsBlock(HOOKAPI_FUNC_CONF* conf, void** calledArgs, DWORD type, void**
 		}
 		//Next action
 		action = nextActionConf(action);
+	}
+	}__except(EXCEPTION_EXECUTE_HANDLER){ //On exception - don't take action.
 	}
 	return false;
 }

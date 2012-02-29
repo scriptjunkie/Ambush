@@ -62,7 +62,7 @@ int CALLBACK WinMain(HINSTANCE,HINSTANCE,LPSTR,int){
 	if(ask("SleepEx 1001 quad"))
 		for(int i = 0; i < 4; i++)
 			SleepEx(1001, FALSE);
-	if(quiet && clock() - one > CLOCKS_PER_SEC)
+	if(quiet && clock() - one > CLOCKS_PER_SEC * 5)
 		error("SleepEx(1001, 0) was not blocked");
 
 	//URLDOWNLOADTOFILEW TEST

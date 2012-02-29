@@ -22,8 +22,9 @@ class AlertArg < ActiveRecord::Base
 			end
 			# find an intelligent base to display in. 10 by default, unless number is a power of two or power of two - 1
 			# or the argument is a bitmask type
+			arg = self.alert.action.arguments.order('id').offset(self.parameter.num - 1).first
 			if number != 0 && (number & (number - 1) == 0 || number & (number + 1) == 0 ||
-					self.alert.action.arguments.order('id').offset(self.parameter.num - 1).first.argtype == 6)
+					(arg && arg.argtype == 6))
 				return "0x#{number.to_s(16)}"
 			else
 				return number.to_s

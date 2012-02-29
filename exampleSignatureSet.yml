@@ -18,28 +18,6 @@ actions:
   arguments:
   - type: Integer
     val: 0
-- name: Hook A
-  action: ALERT
-  severity: 2000
-  function: SetWindowsHookExA
-  dll: User32.dll
-  arguments:
-  - type: Ignore
-  - type: Ignore
-  - type: Integer
-    val: 0
-  - type: Ignore
-- name: Hook W
-  action: ALERT
-  severity: 2000
-  function: SetWindowsHookExW
-  dll: User32.dll
-  arguments:
-  - type: Ignore
-  - type: Ignore
-  - type: Integer
-    val: 0
-  - type: Ignore
 - name: Process Injection - WPM
   action: ALERT
   severity: 2000
@@ -93,24 +71,6 @@ actions:
   action: ALERT
   severity: 2000
   function: CreateProcessA
-  dll: Kernel32.dll
-  arguments:
-  - type: Ignore
-  - type: Ignore
-  - type: Ignore
-  - type: Ignore
-  - type: Ignore
-  - type: Bitmask
-    mask type: ANY
-    mask: 4
-  - type: Ignore
-  - type: Ignore
-  - type: Ignore
-  - type: Ignore
-- name: Process Injection - SuspendedW
-  action: ALERT
-  severity: 2000
-  function: CreateProcessW
   dll: Kernel32.dll
   arguments:
   - type: Ignore
@@ -237,8 +197,30 @@ actions:
   - type: Ignore
     name: flags
     paramtype: Integer
+- name: Hook W
+  action: ALERT
+  severity: 2000
+  function: SetWindowsHookExW
+  dll: User32.dll
+  arguments:
+  - type: Ignore
+  - type: Ignore
+  - type: Ignore
+  - type: Integer
+    val: 0
+- name: Hook A
+  action: ALERT
+  severity: 2000
+  function: SetWindowsHookExA
+  dll: User32.dll
+  arguments:
+  - type: Ignore
+  - type: Ignore
+  - type: Ignore
+  - type: Integer
+    val: 0
 - name: ! 'Open Remote '
-  action: BLOCK
+  action: ALERT
   severity: 1000
   function: OpenSCManagerA
   dll: Advapi32.dll
@@ -247,5 +229,4 @@ actions:
     expression: ^..*$
   - type: Ignore
   - type: Ignore
-  retval: 0
 ...

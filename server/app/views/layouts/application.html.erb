@@ -2,7 +2,8 @@
 <html class="<%= browserclass %>">
 <head>
 	<title>Ambush IPS</title>
-	<%= stylesheet_link_tag    "application" %>
+	<%= stylesheet_link_tag "application" %>
+	<%= stylesheet_link_tag params[:controller] %>
 	<%= javascript_include_tag params[:controller] %>
 	<%= javascript_tag "var AUTH_TOKEN = #{form_authenticity_token.inspect};" if protect_against_forgery? %>
 </head>
