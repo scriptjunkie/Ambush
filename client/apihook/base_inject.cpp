@@ -137,8 +137,7 @@ BYTE load_library_x64[] =	"\xfc\x48\x83\xe4\xf0\xe8\xc8\x00\x00\x00"
  * Attempt to gain code execution in the remote process via a call to ntdll!NtQueueApcThread
  * Note: Windows Server 2008R2 can blue screen if you use APC injection to inject into another sessions csrss.exe
  */
-DWORD inject_via_apcthread(HANDLE hProcess, DWORD dwProcessID, 
-						   DWORD dwDestinationArch, LPVOID lpStartAddress ){
+DWORD inject_via_apcthread(HANDLE hProcess, DWORD dwDestinationArch, LPVOID lpStartAddress ){
 	DWORD dwResult                     = ERROR_ACCESS_DENIED;
 	HMODULE hNtdll                     = NULL;
 	NTQUEUEAPCTHREAD pNtQueueApcThread = NULL;
@@ -152,13 +151,14 @@ DWORD inject_via_apcthread(HANDLE hProcess, DWORD dwProcessID,
 	THREADENTRY32 t                    = {0};
 	APCCONTEXT ctx                     = {0};
 	DWORD dwApcStubLength              = 0;
-
+	DWORD dwProcessID                  = 0;
 	do{
 		ctx.s.lpStartAddress = lpStartAddress;
 		ctx.p.lpParameter    = NULL;
 		ctx.bExecuted        = FALSE;
 
 		t.dwSize = sizeof( THREADENTRY32 );
+		dwProcessID = GetProcessId(hProcess);
 
 		// Get the architecture specific apc inject stub...
 		if( dwDestinationArch == PROCESS_ARCH_X86 ){
@@ -442,16 +442,14 @@ DWORD inject_via_remotethread(HANDLE hProcess, DWORD dwDestinationArch, LPVOID l
  * Note: You must inject a DLL loader of the correct target process architecture. The wrapper function 
  *       dll_inject_load() will handle this automatically.
  */
-BOOL inject_dll( DWORD dwPid, DWORD pidArch, LPVOID lpBuffer, DWORD dwLength ){
+BOOL inject_dll( HANDLE hProcess, DWORD pidArch, LPVOID lpBuffer, DWORD dwLength ){
 	BOOL dwResult                 = TRUE;
-	HANDLE hProcess                = NULL;
 	LPVOID lpRemoteLibraryBuffer   = NULL;
 
 	do{
 		if( !lpBuffer || !dwLength )
 			return FALSE; //BREAK_WITH_ERROR( "[INJECT] inject_dll.  No Dll buffer supplied.", ERROR_INVALID_PARAMETER );
 
-		hProcess = OpenProcess( PROCESS_DUP_HANDLE | PROCESS_VM_OPERATION | PROCESS_VM_WRITE | PROCESS_CREATE_THREAD | PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, dwPid );
 		if( !hProcess )
 			return FALSE; //BREAK_ON_ERROR( "[INJECT] inject_dll. OpenProcess failed." ); 
 
@@ -469,16 +467,13 @@ BOOL inject_dll( DWORD dwPid, DWORD pidArch, LPVOID lpBuffer, DWORD dwLength ){
 			//dprintf( "[INJECT] inject_dll. inject_via_remotethread failed, trying inject_via_apcthread..." );
 			
 			// If that fails we can try to inject via a queued APC in the target process
-			if( inject_via_apcthread( hProcess, dwPid, pidArch, lpRemoteLibraryBuffer ) != ERROR_SUCCESS )
+			if( inject_via_apcthread( hProcess, pidArch, lpRemoteLibraryBuffer ) != ERROR_SUCCESS )
 				break; //BREAK_ON_ERROR( "[INJECT] inject_dll. inject_via_apcthread failed" )
 		}
 
 		dwResult = TRUE;
 
 	} while( 0 );
-
-	if( hProcess )
-		CloseHandle( hProcess );
 
 	return dwResult;
 }
@@ -533,11 +528,10 @@ DWORD ps_getnativearch( VOID ){
 /*
  * Get the architecture of the given process.
  */
-DWORD ps_getarch( DWORD dwPid ){
+DWORD ps_getarch( HANDLE hProcess ){
 	DWORD result                   = PROCESS_ARCH_UNKNOWN;
 	static DWORD dwNativeArch      = PROCESS_ARCH_UNKNOWN;
 	HMODULE hKernel                 = NULL;
-	HANDLE hProcess                = NULL;
 	ISWOW64PROCESS pIsWow64Process = NULL;
 	BOOL bIsWow64                  = FALSE;
 
@@ -560,13 +554,6 @@ DWORD ps_getarch( DWORD dwPid ){
 		// now we must default to an unknown architecture as the process may be either x86/x64 and we may not have the rights to open it
 		result = PROCESS_ARCH_UNKNOWN;
 
-		hProcess = OpenProcess( PROCESS_QUERY_INFORMATION, FALSE, dwPid );
-		if( !hProcess ){
-			hProcess = OpenProcess( PROCESS_QUERY_LIMITED_INFORMATION, FALSE, dwPid );
-			if( !hProcess )
-				break;
-		}
-
 		if( !pIsWow64Process( hProcess, &bIsWow64 ) )
 			break;
 
@@ -576,9 +563,6 @@ DWORD ps_getarch( DWORD dwPid ){
 			result = dwNativeArch;
 
 	} while( 0 );
-
-	if( hProcess )
-		CloseHandle( hProcess );
 
 	if( hKernel )
 		FreeLibrary( hKernel );
@@ -624,14 +608,14 @@ BOOL injectPrep(){
 			loadDllx64CodeSize - sizeof(load_library_x64) + 1);
 	return TRUE;
 }
-DWORD dll_inject_load( DWORD dwPid ){
+DWORD dll_inject_load( HANDLE hProcess ){
 	DWORD dwResult     = ERROR_ACCESS_DENIED;
 	DWORD dwPidArch    = PROCESS_ARCH_UNKNOWN;
 	LPVOID lpDllBuffer = NULL;
 	DWORD dwDllLength  = 0;
 
 	do{
-		dwPidArch = ps_getarch( dwPid );
+		dwPidArch = ps_getarch( hProcess );
 		if(!injectPrepped)
 			if(injectPrep() == FALSE)
 				return dwResult;
@@ -645,7 +629,7 @@ DWORD dll_inject_load( DWORD dwPid ){
 		}else{
 			break; //BREAK_WITH_ERROR( "[PS] ps_inject_dll. Unable to determine target pid arhitecture", ERROR_INVALID_DATA ); 
 		}
-		dwResult = inject_dll( dwPid, dwPidArch, lpDllBuffer, dwDllLength );
+		dwResult = inject_dll( hProcess, dwPidArch, lpDllBuffer, dwDllLength );
 
 	} while( 0 );
 	return dwResult;

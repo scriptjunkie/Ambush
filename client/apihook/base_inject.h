@@ -93,9 +93,9 @@ DWORD inject_via_apcthread(HANDLE hProcess, DWORD dwProcessID, DWORD dwDestinati
 
 DWORD inject_via_remotethread(HANDLE hProcess, DWORD dwDestinationArch, LPVOID lpStartAddress );
 
-BOOL inject_dll( DWORD dwPid, DWORD pidArch, LPVOID lpBuffer, DWORD dwLength );
+BOOL inject_dll( HANDLE hProcess, DWORD pidArch, LPVOID lpBuffer, DWORD dwLength );
 
-DWORD dll_inject_load( DWORD dwPid );
+DWORD dll_inject_load( HANDLE hProcess );
 
 //===============================================================================================//
 #endif

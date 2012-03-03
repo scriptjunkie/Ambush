@@ -294,21 +294,21 @@ void* hook0 (void* arg0){
 typedef DWORD (WINAPI * CreateProcessInternalWFunc)( PVOID, LPCWSTR, LPWSTR, LPSECURITY_ATTRIBUTES, 
 	LPSECURITY_ATTRIBUTES, BOOL, DWORD, LPVOID,LPCWSTR,LPSTARTUPINFOW,LPPROCESS_INFORMATION,PVOID);
 CreateProcessInternalWFunc CreateProcessInternalWReal;
-DWORD WINAPI CreateProcessInternalWHook(PVOID unknown1, LPCWSTR lpApplicationName, LPWSTR lpCommandLine, LPSECURITY_ATTRIBUTES lpProcessAttributes, LPSECURITY_ATTRIBUTES lpThreadAttributes,
-		BOOL bInheritHandles, DWORD dwCreationFlags, LPVOID lpEnvironment, LPCWSTR lpCurrentDirectory, LPSTARTUPINFOW lpStartupInfo, LPPROCESS_INFORMATION lpProcessInformation, PVOID unknown2){
+DWORD WINAPI CreateProcessInternalWHook(PVOID token, LPCWSTR lpApplicationName, LPWSTR lpCommandLine, LPSECURITY_ATTRIBUTES lpProcessAttributes, LPSECURITY_ATTRIBUTES lpThreadAttributes,
+		BOOL bInheritHandles, DWORD dwCreationFlags, LPVOID lpEnvironment, LPCWSTR lpCurrentDirectory, LPSTARTUPINFOW lpStartupInfo, LPPROCESS_INFORMATION lpProcessInformation, PVOID unknown){
 	bool alreadySuspended = (dwCreationFlags & CREATE_SUSPENDED) != 0;
-	DWORD retval = CreateProcessInternalWReal(unknown1, lpApplicationName, lpCommandLine, lpProcessAttributes, lpThreadAttributes, 
-		bInheritHandles, dwCreationFlags | CREATE_SUSPENDED, lpEnvironment, lpCurrentDirectory, lpStartupInfo, lpProcessInformation, unknown2);
+	DWORD retval = CreateProcessInternalWReal(token, lpApplicationName, lpCommandLine, lpProcessAttributes, lpThreadAttributes, 
+		bInheritHandles, dwCreationFlags | CREATE_SUSPENDED, lpEnvironment, lpCurrentDirectory, lpStartupInfo, lpProcessInformation, unknown);
 
-	// If something weird or bad or broken is happening, don't continue
-	if(retval == 0 || unknown1 != 0 || unknown2 != 0){
+	// If something weird or broken is happening, don't continue
+	if(retval == 0 || (dwCreationFlags  & CREATE_PROTECTED_PROCESS) != 0){
 		if(!alreadySuspended)
 			ResumeThread(lpProcessInformation->hThread);
 		return retval;
 	}
-	
+
 	disableAlerts();
-	dll_inject_load(lpProcessInformation->dwProcessId); // Try msf-style cross-arch inject
+	dll_inject_load(lpProcessInformation->hProcess); // Try msf-style cross-arch inject
 	if(!alreadySuspended)
 		ResumeThread(lpProcessInformation->hThread);
 	enableAlerts();

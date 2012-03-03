@@ -59,36 +59,41 @@ class AlertsController < ApplicationController
 			@alert = Alert.new
 			size = request.body.read(4).unpack('V')[0]
 			message = request.body.read(size - 4)
-			aid, @alert.pid, @alert.count, argcount = message.slice!(0, 16).unpack('VVVV')
-			act = Action.find(aid)
-			@alert.action = act
-			@alert.ip = request.remote_ip
-			@alert.save
-
-			#save parameters
-			act.available_function.parameters.all(:order => 'num').each do |param|
-				aa = AlertArg.new(@alert, message, param)
-			end
-
-			#get info about user/computer/process
-			userlen = message.slice!(0, 4).unpack('V')[0]
-			@alert.user = message.slice!(0, userlen).force_encoding("UTF-16LE").encode('UTF-8')
-			computerlen = message.slice!(0, 4).unpack('V')[0]
-			@alert.computer = message.slice!(0, computerlen).force_encoding("UTF-16LE").encode('UTF-8')
-			proclen = message.slice!(0, 4).unpack('V')[0]
-			@alert.process = message.slice!(0, proclen).force_encoding("UTF-16LE").encode('UTF-8')
-			modlen = message.slice!(0, 4).unpack('V')[0]
-			@alert.module = message.slice!(0, modlen).force_encoding("UTF-16LE").encode('UTF-8')
-
-			#check for dups
-			lastAlert = Alert.where(:pid => @alert.pid, :user => @alert.user, :action_id => aid, :ip => @alert.ip, 
-					:computer => @alert.computer).where('created_at > ?', Time.current - 3600).first
-			if lastAlert and lastAlert.display == @alert.display
-				lastAlert.count += @alert.count
-				lastAlert.save
-				@alert.destroy
-			else
+			begin
+				aid, @alert.pid, @alert.count, argcount = message.slice!(0, 16).unpack('VVVV')
+				act = Action.find(aid)
+				@alert.action = act
+				@alert.ip = request.remote_ip
 				@alert.save
+
+				#save parameters
+				act.available_function.parameters.all(:order => 'num').each do |param|
+					aa = AlertArg.new(@alert, message, param)
+				end
+
+				#get info about user/computer/process
+				userlen = message.slice!(0, 4).unpack('V')[0]
+				@alert.user = message.slice!(0, userlen).force_encoding("UTF-16LE").encode('UTF-8')
+				computerlen = message.slice!(0, 4).unpack('V')[0]
+				@alert.computer = message.slice!(0, computerlen).force_encoding("UTF-16LE").encode('UTF-8')
+				proclen = message.slice!(0, 4).unpack('V')[0]
+				@alert.process = message.slice!(0, proclen).force_encoding("UTF-16LE").encode('UTF-8')
+				modlen = message.slice!(0, 4).unpack('V')[0]
+				@alert.module = message.slice!(0, modlen).force_encoding("UTF-16LE").encode('UTF-8')
+
+				#check for dups
+				lastAlert = Alert.where(:pid => @alert.pid, :user => @alert.user, :action_id => aid, :ip => @alert.ip, 
+						:computer => @alert.computer).where('created_at > ?', Time.current - 3600).first
+				if lastAlert and lastAlert.display == @alert.display
+					lastAlert.count += @alert.count
+					lastAlert.save
+					@alert.destroy
+				else
+					@alert.save
+				end
+			rescue Exception => e  
+				Rails.logger.error e.message  
+				Rails.logger.error e.backtrace
 			end
 		end
 		send_data ''

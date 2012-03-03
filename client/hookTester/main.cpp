@@ -87,6 +87,7 @@ int CALLBACK WinMain(HINSTANCE,HINSTANCE,LPSTR,int){
 	PROCESS_INFORMATION proc;
 	memset(&start,0,sizeof(start));
 	memset(&proc,0,sizeof(proc));
+	start.cb = sizeof(start);
 	char cmdline[100];
 	lstrcpyA(cmdline,"cmd.exe");
 	if(ask("Start cmd")){
