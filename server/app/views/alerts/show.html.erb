@@ -9,6 +9,6 @@
 <%= h(@alert.action.severity) %>
 <%= h(@alert.action.actionStr) %>
 <%= h(@alert.action.available_function.available_dll.name) %>
-<%= h(@alert.action.available_function.name+'('+@alert.alert_args.map { |aa| aa.display }.join(",")+')') %>
+<%= h(@alert.action.available_function.name+'('+@alert.display+')') %>
 </p>
 </div>

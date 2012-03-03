@@ -59,6 +59,12 @@ BOOL (WINAPI *mWinHttpReadData)(
 BOOL (WINAPI *mWinHttpCloseHandle)(
   __in  HINTERNET hInternet
 );
+BOOL (WINAPI *mWinHttpWriteData)(
+  __in   HINTERNET hRequest,
+  __in   LPCVOID lpBuffer,
+  __in   DWORD dwNumberOfBytesToWrite,
+  __out  LPDWORD lpdwNumberOfBytesWritten
+);
 PWCHAR computerName = NULL;
 DWORD computerNameLen = 0;
 WCHAR exeFileName[MAX_PATH];
@@ -81,9 +87,11 @@ BOOL loadWinHTTP(){
 		GetProcAddress(winhttpdll,"WinHttpReadData");
 	mWinHttpCloseHandle = (BOOL (WINAPI *)(HINTERNET))
 		GetProcAddress(winhttpdll,"WinHttpCloseHandle");
+	mWinHttpWriteData = (BOOL (WINAPI *)(HINTERNET,LPCVOID,DWORD,LPDWORD))
+		GetProcAddress(winhttpdll,"WinHttpWriteData");
 	return mWinHttpCloseHandle != NULL && mWinHttpReadData != NULL && mWinHttpReceiveResponse != NULL
 		&& mWinHttpSendRequest != NULL && mWinHttpOpenRequest != NULL 
-		&& mWinHttpConnect != NULL && mWinHttpOpen != NULL;
+		&& mWinHttpConnect != NULL && mWinHttpOpen != NULL && mWinHttpWriteData != NULL;
 }
 
 //Checks into a listening local server - not ours
@@ -136,7 +144,7 @@ DWORD WINAPI HTTPthread(AlertQueueNode* argnode){
 		// arrays of unique alerts
 		const int max_alerts = 32;
 		PHOOKAPI_MESSAGE alerts[max_alerts];
-		int alertCount = 0;
+		DWORD alertCount = 0, totalAlertLength = sizeof(DWORD); // count, then alerts
 		do{ //Loop to get all alerts for up to 20 seconds
 			AlertQueueNode* nextnode = lastnode->next;
 			HeapFree(rwHeap, 0, lastnode); //throw away last
@@ -156,6 +164,7 @@ DWORD WINAPI HTTPthread(AlertQueueNode* argnode){
 			if(dup == false){ //new alert, save a copy and check alert count
 				alerts[alertCount] = message;
 				alertCount++;
+				totalAlertLength += message->length;
 				if(alertCount == max_alerts)
 					break; //We can't take any more!
 			}
@@ -169,22 +178,26 @@ DWORD WINAPI HTTPthread(AlertQueueNode* argnode){
 		// Connect to the HTTP server.
 		if (hSession)
 			hConnect = mWinHttpConnect( hSession, server, SERVER_PORT, 0);//INTERNET_DEFAULT_HTTP_PORT
-		//Send request for each alert
-		for(int i = 0; i < alertCount; i++){
-			// Create an HTTP Request handle.
-			if (hConnect)
-				hRequest = mWinHttpOpenRequest( hConnect, L"POST", L"/alerts", 
-						NULL, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES,0);
-			BOOL  bResults = FALSE;
-			if (hRequest)
-				bResults = mWinHttpSendRequest( hRequest, L"Content-Type: application/octet-stream\r\n",
-						(DWORD)-1, alerts[i], alerts[i]->length, alerts[i]->length, 0);
-			HeapFree(rwHeap, 0, alerts[i]);
-			if (bResults)
-				bResults = mWinHttpReceiveResponse( hRequest, NULL);
-			//if (!bResults)...Errors. What do we do? Can't report to server. Already logged. oh well.
-			if (hRequest) mWinHttpCloseHandle(hRequest);
+		// Create an HTTP Request handle.
+		if (hConnect)
+			hRequest = mWinHttpOpenRequest( hConnect, L"POST", L"/alerts", 
+					NULL, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES,0);
+		BOOL  bResults = FALSE;
+		if (hRequest)
+			bResults = mWinHttpSendRequest( hRequest, L"Content-Type: application/octet-stream\r\n",
+					(DWORD)-1, &alertCount, sizeof(DWORD), totalAlertLength, 0);
+		//Send each alert
+		if (bResults){
+			for(int i = 0; i < alertCount; i++){
+				DWORD written;
+				bResults = mWinHttpWriteData(hRequest, alerts[i], alerts[i]->length, &written);
+				HeapFree(rwHeap, 0, alerts[i]);
+			}
 		}
+		if (bResults)
+			bResults = mWinHttpReceiveResponse( hRequest, NULL);
+		//if (!bResults)...Errors. What do we do? Can't report to server. Already logged. oh well.
+		if (hRequest) mWinHttpCloseHandle(hRequest);
 		if (hConnect) mWinHttpCloseHandle(hConnect);
 	}
 	if (hSession) mWinHttpCloseHandle(hSession); //not that we'll ever get here...

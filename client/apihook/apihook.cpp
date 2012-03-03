@@ -487,6 +487,7 @@ bool hookAllDlls(){
 }
 //Post-DllMain-init. Doesn't really take an arg, just for CreateThread
 DWORD WINAPI postInit(PVOID){
+	hookAllDlls(); //Hook the ones we have now
 	return checkLogging(); //Setup a log server for this system or just check in
 }
 
