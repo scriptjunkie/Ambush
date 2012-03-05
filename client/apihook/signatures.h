@@ -58,22 +58,31 @@ typedef struct sHOOKAPI_ACTION_CONF
     unsigned long long   retval;
     unsigned int   type;
     unsigned int   numArgs;
-    unsigned int   exePathLen;
+    unsigned int   exeBlackLen;
+    unsigned int   exeWhiteLen;
+    unsigned int   modBlackLen;
+    unsigned int   modWhiteLen;
     unsigned int   retAddrMemType;
     unsigned int   retAddrMemMode;
-    unsigned int   modPathLen;
-	char exePath[1];
+	char exeBlack[4];
 	//HOOKAPI_CONDITION_CONF conditions[1];
 } HOOKAPI_ACTION_CONF, *PHOOKAPI_ACTION_CONF;
 
 //Get Functions
-inline PHOOKAPI_ARG_CONF actionConfArgs(PHOOKAPI_ACTION_CONF conf){
-	return (PHOOKAPI_ARG_CONF) ((PBYTE)conf + sizeof(unsigned int) * 10 +
-		sizeof(unsigned long long) + conf->exePathLen + conf->modPathLen);
+inline PCHAR actionConfExeBlack(PHOOKAPI_ACTION_CONF conf){
+	return conf->exeBlack;
 }
-inline PCHAR actionConfModpath(PHOOKAPI_ACTION_CONF conf){
-	return (PCHAR) ((PBYTE)conf + sizeof(unsigned int) * 10 +
-		sizeof(unsigned long long) + conf->exePathLen);
+inline PCHAR actionConfExeWhite(PHOOKAPI_ACTION_CONF conf){
+	return (PCHAR) (actionConfExeBlack(conf) + conf->exeBlackLen);
+}
+inline PCHAR actionConfModBlack(PHOOKAPI_ACTION_CONF conf){
+	return (PCHAR) (actionConfExeWhite(conf) + conf->exeWhiteLen);
+}
+inline PCHAR actionConfModWhite(PHOOKAPI_ACTION_CONF conf){
+	return (PCHAR) (actionConfModBlack(conf) + conf->modBlackLen);
+}
+inline PHOOKAPI_ARG_CONF actionConfArgs(PHOOKAPI_ACTION_CONF conf){
+	return (PHOOKAPI_ARG_CONF) (actionConfModWhite(conf) + conf->modWhiteLen);
 }
 inline PHOOKAPI_ACTION_CONF nextActionConf(PHOOKAPI_ACTION_CONF conf){
 	return (PHOOKAPI_ACTION_CONF) ((PBYTE)conf + conf->size);

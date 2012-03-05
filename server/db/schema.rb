@@ -11,21 +11,23 @@
 #
 # It's strongly recommended to check this file into your version control system.
 
-ActiveRecord::Schema.define(:version => 20120203002310) do
+ActiveRecord::Schema.define(:version => 20120303183139) do
 
   create_table "actions", :force => true do |t|
     t.string  "name"
     t.integer "action"
     t.integer "severity"
     t.integer "retval"
-    t.string  "exepath"
     t.integer "signature_set_id"
     t.integer "available_function_id"
     t.integer "retprotectType"
     t.integer "retprotectMode"
     t.integer "actiontype"
     t.text    "notes"
-    t.string  "modpath"
+    t.string  "modblacklist"
+    t.string  "modwhitelist"
+    t.string  "procblacklist"
+    t.string  "procwhitelist"
   end
 
   create_table "alert_args", :force => true do |t|

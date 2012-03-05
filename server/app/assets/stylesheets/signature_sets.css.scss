@@ -9,3 +9,15 @@ margin: 1px;
 padding: 1px;
 font-family: arial;
 }
+textarea.list{
+width:400px;
+}
+#lists{
+top: 50px;
+width: 500px;
+left: 50%;
+margin-left: -250px;
+position: fixed;
+display: none;
+z-index:2
+}

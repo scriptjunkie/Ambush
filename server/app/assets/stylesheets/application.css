@@ -70,7 +70,7 @@ margin-right: auto;
 margin-bottom: 20px;
 position:relative;
 }
-p, span.button {
+p, span {
 margin: 0px;
 padding:2px 20px;
 color: white;
@@ -111,9 +111,14 @@ background: linear-gradient(top, #ffffff 0%,#cccccc 50%,#ffffff 100%); /* W3C */
 .earlyie span.button:hover{
 filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#ffffff', endColorstr='#ffffff',GradientType=0 ); /* IE6-9 */
 }
-p.dialog{
+p.dialog, span.dialog{
 box-shadow: none;
 color: white;
+}
+p.thindialog{
+box-shadow: none;
+color: white;
+padding:0px;
 }
 table.sortable {
 border-collapse: collapse;

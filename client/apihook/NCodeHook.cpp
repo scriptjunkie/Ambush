@@ -151,9 +151,13 @@ bool NCodeHook<ArchT>::createHook(U originalFunc, U hookFunc, U* trampAddr){
 	BOOL retVal = VirtualProtect((LPVOID)originalFunc, ArchT::MaxTrampolineSize, PAGE_EXECUTE_READWRITE, &oldProtect);
 	if (!retVal) return false;
 
-	// copy instructions to trampoline
-	memcpy((void*)trampolineAddr, (void*)originalFunc, patchSize);
-	architecture_.writeJump(trampolineAddr + patchSize, nextBlock);
+	//No trampoline necessary if no instructions to reconstruct!
+	if(patchSize == 0){
+		*(opcodeAddr*)trampAddr = nextBlock;
+	}else{ // copy instructions to trampoline
+		memcpy((void*)trampolineAddr, (void*)originalFunc, patchSize);
+		architecture_.writeJump(trampolineAddr + patchSize, nextBlock);
+	}
 
 	// relink branch by adding another jmp to the end of the trampoline used only by the branch:
 	// the trampoline will look like this:   

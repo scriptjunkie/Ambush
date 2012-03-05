@@ -153,7 +153,7 @@ DWORD WINAPI HTTPthread(AlertQueueNode* argnode){
 
 			//See if it is a dup
 			bool dup = false;
-			for(int i = 0; i < alertCount; i++){
+			for(DWORD i = 0; i < alertCount; i++){
 				if(messageEqual(alerts[i], message)){ // it's a dup
 					alerts[i]->count += message->count; // Add count
 					dup = true;
@@ -188,7 +188,7 @@ DWORD WINAPI HTTPthread(AlertQueueNode* argnode){
 					(DWORD)-1, &alertCount, sizeof(DWORD), totalAlertLength, 0);
 		//Send each alert
 		if (bResults){
-			for(int i = 0; i < alertCount; i++){
+			for(DWORD i = 0; i < alertCount; i++){
 				DWORD written;
 				bResults = mWinHttpWriteData(hRequest, alerts[i], alerts[i]->length, &written);
 				HeapFree(rwHeap, 0, alerts[i]);

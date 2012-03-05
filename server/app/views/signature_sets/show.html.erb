@@ -8,6 +8,19 @@ numSigs = <%= @signature_set.actions.length %>;
 dlls = '<%= h(AvailableDll.all(:order => "name").map{|ad| ad.name}.join(',')) %>'.split(',');
 </script>
 
+<div id="lists" class="modal">
+	<h2>Blacklist</h2>
+	<p class="dialog">List filenames or paths to exclude, one per line:</p>
+	<textarea id="blacklistarea" rows=5 class="list"></textarea>
+	<h2>Whitelist</h2>
+	<p class="dialog">List filenames or paths to include, or leave blank to include all others:</p>
+	<textarea id="whitelistarea" rows=5 class="list"></textarea>
+	<p class="dialog">
+		<button class="close" onclick="applyLists()"> Ok </button>
+		<button class="close" onclick="$('#lists').fadeOut(500)"> Cancel </button>
+	</p>
+</div>
+
 <div class="modal" id="delete" style="width: auto">
 	<h2>Confirmation</h2>
 	<p class="dialog">
@@ -32,10 +45,12 @@ dlls = '<%= h(AvailableDll.all(:order => "name").map{|ad| ad.name}.join(',')) %>
 		<tbody>
 			<tr><td colspan=4><h3>Info</h3></td><td><p class="dialog">Notes</p></td></tr>
 			<tr><td><p class="dialog">Name</p></td><td colspan=3><input name="act[name]" type="text" class="wide" value="Signature 1" title="The displayed name of your signature"></input></td><td rowspan=5><textarea name="act[notes]" cols=50 rows=5></textarea></td></tr>
-			<tr><td><p class="dialog">Action</p></td><td><select id="actionSelect" name="act[action]" onchange="checkActionSelect()"><option value="ALERT">Alert</option><option value="BLOCK">Block</option><option value="KILLTHREAD">Kill thread</option><option value="KILLPROC">Kill process</option></select></td><td><p name="act[retval]">Return:</p></td><td><input name="act[retval]" type="text" value="0" title="Value to return" style="width:60px;float:right;"></input></td></tr>
+			<tr><td><p class="dialog">Action</p></td><td><select id="actionSelect" name="act[action]" onchange="checkActionSelect()"><option value="alert">Alert</option><option value="block">Block</option><option value="kill thread">Kill thread</option><option value="kill process">Kill process</option></select></td><td><p name="act[retval]">Return:</p></td><td><input name="act[retval]" type="text" value="0" title="Value to return" style="width:60px;float:right;"></input></td></tr>
 			<tr><td><p class="dialog">Severity</p></td><td><select id="severitySelect" name="severity" onchange="$('#severityCustom').val($('#severitySelect').val());"><option value="0">None</option><option value="1000">Low</option><option value="2000" selected="selected">Medium</option><option value="3000">High</option><option value="4000">Critical</option></select></td><td colspan=2><input id="severityCustom" name="act[severity]" type="text" value="2000" size=5 title="The severity of a signature match on a scale of 0-4000 (or more if you're panicky)"></input></td></tr>
-			<tr><td><p class="dialog">Process</p></td><td colspan=3><input name="act[exepath]" class="wide" type="text" value="" title="Process name or path to match, in regular expression syntax. Leave blank to enable signature on any process"></input></td></tr>
-			<tr><td><p class="dialog">Module</p></td><td colspan=3><input name="act[modpath]" class="wide" type="text" value="" title="Name or path of calling module to match, in regular expression syntax. Leave blank to enable signature on any module."></input></td></tr>
+			<tr><td><p class="dialog">Process</p></td><td colspan=3><p class="thindialog" style="white-space: nowrap; overflow: hidden; width: 304px; text-overflow: ellipsis;"><button class="close" style="width:50px" onclick="showLists('proc');return false;">Edit</button><span id="procblacklist"> - </span></p></td></tr>
+			<input name="act[procwhitelist]" type="hidden" value=""></input><input name="act[procblacklist]" type="hidden" value=""></input>
+			<tr><td><p class="dialog">Module</p></td><td colspan=3><p class="thindialog" style="white-space: nowrap; overflow: hidden; width: 304px; text-overflow: ellipsis;"><button class="close" style="width:50px" onclick="showLists('mod');return false;">Edit</button><span id="modblacklist"> - </span></p></td></tr>
+			<input name="act[modwhitelist]" type="hidden" value=""></input><input name="act[modblacklist]" type="hidden" value=""></input>
 		</tbody>
 		</table>
 		<table class="dialog">
@@ -69,7 +84,7 @@ dlls = '<%= h(AvailableDll.all(:order => "name").map{|ad| ad.name}.join(',')) %>
         <tr id="restrictiontyperow">
             <td><p class="dialog">Restriction</p></td>
             <td><select id="sels-1" name="retprotectType" onchange="subtypeChange(-1)">
-            <option value="Ignore">Ignore</option><option value="Pointer">Memory Protection</option></select></td>
+            <option value="ignore">Ignore</option><option value="pointer">Memory Protection</option></select></td>
         </tr>
         <tr id="restrictionrow">
             <td><p class="dialog">Value</p></td>

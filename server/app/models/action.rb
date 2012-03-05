@@ -3,7 +3,7 @@ class Action < ActiveRecord::Base
 	belongs_to :signature_set
 	has_many :arguments, :dependent => :destroy
 	has_many :alerts, :dependent => :destroy
-	@@actions = ['ALERT', 'BLOCK', 'KILLPROC', 'KILLTHREAD']
+	@@actions = ['alert', 'block', 'kill process', 'kill thread']
 	@@memconstants = {0x10 => 'PAGE_EXECUTE', 0x20 => 'PAGE_EXECUTE_READ', 
 			0x40 => 'PAGE_EXECUTE_READWRITE', 0x80 => 'PAGE_EXECUTE_WRITECOPY', 
 			0x1 => 'PAGE_NOACCESS', 0x2 => 'PAGE_READONLY', 
@@ -12,6 +12,8 @@ class Action < ActiveRecord::Base
 			'PAGE_EXECUTE_READWRITE' => 0x40, 'PAGE_EXECUTE_WRITECOPY' => 0x80, 
 			'PAGE_NOACCESS' => 0x1, 'PAGE_READONLY' => 0x2, 
 			'PAGE_READWRITE' => 0x4, 'PAGE_WRITECOPY' => 0x8}
+	@@severityConstants = {0 => 'none', 1000 => 'low', 2000 => 'medium', 3000 => 'high', 4000 => 'critical'}
+	@@severityStrings = {'none' => 0, 'low' => 1000, 'medium' => 2000, 'high' => 3000, 'critical' => 4000}
 
 	def actionStr
 		@@actions[self.action]
@@ -27,12 +29,19 @@ class Action < ActiveRecord::Base
 
 	def simplified
 		defined = self.available_function.decl != nil
-		simple = {'name' => self.name, 'action' => @@actions[self.action], 'severity' => self.severity, 
+		simple = {'name' => self.name, 'action' => @@actions[self.action],  
 				'function' => self.available_function.name, 'dll' => self.available_function.available_dll.name, 
 				'arguments' => self.arguments.map{|a| a.simplified(defined)} }
-		simple['module'] = self.modpath if self.modpath != nil and self.modpath.length > 0
-		simple['process'] = self.exepath if self.exepath != nil and self.exepath.length > 0
+		simple['modblacklist'] = self.modblacklist if self.modblacklist != nil and self.modblacklist.length > 0
+		simple['modwhitelist'] = self.modwhitelist if self.modwhitelist != nil and self.modwhitelist.length > 0
+		simple['procblacklist'] = self.procblacklist if self.procblacklist != nil and self.procblacklist.length > 0
+		simple['procwhitelist'] = self.procwhitelist if self.procwhitelist != nil and self.procwhitelist.length > 0
 		simple['retval'] = self.retval if self.action == 1
+		if @@severityConstants.has_key? self.severity
+			simple['severity'] = @@severityConstants[self.severity]
+		else
+			simple['severity'] = self.severity
+		end
 		if self.retprotectMode != 0
 			if @@memconstants.has_key? self.retprotectMode
 				simple['retprotectMode'] = @@memconstants[self.retprotectMode]
@@ -51,11 +60,18 @@ class Action < ActiveRecord::Base
 		func = AvailableFunction.find_or_create(simple['function'], simple['arguments'], dll)
 
 		#Create action
-		act = Action.new(:action => @@actions.index(simple['action']), :available_function_id => func.id,
-				:severity => simple['severity'], :name => simple['name'], :signature_set_id => set.id)
-		act.exepath = simple['process'] if simple['process']
-		act.modpath = simple['module'] if simple['module']
+		act = Action.new(:action => @@actions.index(simple['action'].downcase), :available_function_id => func.id,
+				:name => simple['name'], :signature_set_id => set.id,
+				:modblacklist => simple['modblacklist'], :modwhitelist => simple['modwhitelist'], 
+				:procblacklist => simple['procblacklist'], :procwhitelist => simple['procwhitelist'])
 		act.retval = simple['retval'] || 0
+
+		#Severity
+		if @@severityStrings.has_key? simple['severity'].downcase
+			act.severity = @@severityStrings[simple['severity'].downcase]
+		else
+			act.severity = simple['severity'].to_i
+		end
 
 		#Return address conditions
 		if simple['retprotectMode']
@@ -77,6 +93,14 @@ class Action < ActiveRecord::Base
 		act.signature_set.markchanged
 	end
 
+	# turns a regex list from display format (multiline) to a lowercase regex
+	# also null pads to 4 byte alignment
+	def splitregex(str)
+		return "\x00\x00\x00\x00" if str == nil or str.chomp == ''
+		newstr = '(' + str.chomp.gsub(/\r\n/,'|').gsub(/\n/,'|') + ')'
+		newstr.downcase + ("\x00" * (4 - (newstr.length % 4)))
+	end
+
 	def compiled
 		# action - required
 		raise 'Error - must define an action' if self.action == nil
@@ -89,23 +113,24 @@ class Action < ActiveRecord::Base
 		# args - required
 		args = self.arguments.order('id')
 		raise 'Error - no args' if args.length == 0
-		# default processName - ''
-		self.exepath = '' if self.exepath == nil
-		name = self.exepath.downcase + ("\x00"*(4-(self.exepath.length % 4)))
-		# default module path regex - ''
-		self.modpath = '' if self.modpath == nil
-		modname = self.modpath.downcase + ("\x00"*(4-(self.modpath.length % 4)))
+		# executable path black/white lists
+		exeblack = splitregex(self.procblacklist)
+		exewhite = splitregex(self.procwhitelist)
+		# module black/white lists
+		modblack = splitregex(self.modblacklist)
+		modwhite = splitregex(self.modwhitelist)
 		# put together output
 		out = [self.id, self.action, self.severity, self.retval, self.actiontype, args.length,
-				name.length].pack("VVVQVVV")
+				exeblack.length, exewhite.length, modblack.length, modwhite.length].pack("VVVQVVVVVV")
 		# default retAddress - {}
 		if self.retprotectMode == nil
 			out << [0,0].pack('V*')
 		else
 			out << [self.retprotectType, self.retprotectMode].pack("V*")
 		end
-		# arguments - required
-		out << [modname.length].pack('V') + name + modname
+		# white/black lists
+		out << exeblack + exewhite + modblack + modwhite
+		# arguments
 		args.each do |arg|
 			out << arg.compiled
 		end

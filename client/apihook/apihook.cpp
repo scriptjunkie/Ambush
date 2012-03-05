@@ -60,6 +60,8 @@ ThreeArgFunc callApi = NULL;
 
 //Does the memory at address match the given memory protection constraints?
 inline bool memCompareProtect(void* address, unsigned int mode, unsigned int type){
+	if(mode == 0 && type == 0) // all zeroes - shortcut for no comparison
+		return true;
 	MEMORY_BASIC_INFORMATION mbi;
 	if(VirtualQuery(address, &mbi, sizeof(mbi)) == 0)
 		return true; //Error. default true
@@ -184,40 +186,42 @@ inline bool argumentsMatch(HOOKAPI_ACTION_CONF* action, void** calledArgs){
 	return true;
 }
 
-//Does the filename of the module including addr match regex?
-inline bool matchesModule(PCHAR regex, PVOID addr){
-	if(regex[0] == '\0') // There is no condition, it matches
-		return true;
-	MEMORY_BASIC_INFORMATION meminfo;
-	VirtualQuery(addr, &meminfo, sizeof(meminfo));
+// Core logic of process and module black and white list comparisons
+inline bool matchesModule(PCHAR blacklist, PCHAR whitelist, HMODULE mod){
 	char fname[MAX_PATH];
-	DWORD len = GetModuleFileNameA((HMODULE)meminfo.AllocationBase, fname, MAX_PATH);
+	DWORD len = GetModuleFileNameA(mod, fname, MAX_PATH);
 	if(len == 0)
 		return true; // Not a module?! Default to matching.
 	for (DWORD i = 0; i < len; i++)
 		fname[i] = (char)tolower(fname[ i ]); // lower-case it!
-	ensureSlreCompiled<slre,char>(regex, slre_compile);
-	return slre_match(compiledSignatures[regex], fname, len, NULL) == 1;
+	ensureSlreCompiled<slre,char>(whitelist, slre_compile);
+	ensureSlreCompiled<slre,char>(blacklist, slre_compile);
+	return (whitelist[0] == '\0' || slre_match(compiledSignatures[whitelist], fname, len, NULL) == 1)
+		&& (blacklist[0] == '\0' || slre_match(compiledSignatures[blacklist], fname, len, NULL) == 0);
+}
+
+//Does the filename of the module including addr match the white/black lists?
+inline bool moduleApplies(HOOKAPI_ACTION_CONF* action, PVOID addr){
+	char* black = actionConfModBlack(action);
+	char* white = actionConfModWhite(action);
+	if(black[0] == '\0' && white[0] == '\0') // There is no condition, it matches
+		return true;
+	MEMORY_BASIC_INFORMATION meminfo;
+	VirtualQuery(addr, &meminfo, sizeof(meminfo)); //Get module base from address
+	return matchesModule(black, white, (HMODULE)meminfo.AllocationBase);
 }
 
 //Does this action apply to this process?
 inline bool matchesProcess(HOOKAPI_ACTION_CONF* action){
-	if(action->exePath[0] == '\0') // There is no condition, it matches
+	char* black = actionConfExeBlack(action);
+	char* white = actionConfExeWhite(action);
+	if(black[0] == '\0' && white[0] == '\0') // There is no condition, it matches
 		return true;
 	if(compiledSignatures.count(action) == 0){ // We haven't seen it before. Do the check.
-		char exeFileName[MAX_PATH];
-		DWORD exeNameLen = GetModuleFileNameA(NULL, exeFileName, sizeof(exeFileName));
-		for (DWORD i = 0; i < exeNameLen; i++)
-			exeFileName[i] = (char)tolower(exeFileName[ i ]); // lower-case it!
-		slre* regex = (slre*)HeapAlloc(rwHeap, HEAP_ZERO_MEMORY, sizeof(slre));
-		if(regex == NULL)
-			return true; // Fail to match
-		slre_compile(regex, action->exePath);
-		if(slre_match(regex, exeFileName, exeNameLen, NULL) == 1)
+		if(matchesModule(black, white, NULL))
 			compiledSignatures[action] = PROC_MATCH;
 		else
 			compiledSignatures[action] = NO_PROC_MATCH;
-		HeapFree(rwHeap, 0, regex); // ok we're done
 	}
 	return compiledSignatures[action] == PROC_MATCH;
 }
@@ -227,11 +231,11 @@ bool actionsBlock(HOOKAPI_FUNC_CONF* conf, void** calledArgs, DWORD type, void**
 	__try{
 	HOOKAPI_ACTION_CONF* action = functionConfActions(conf);
 	for(unsigned int i = 0; i < conf->numActions; i++){
-		if(action->type == type && matchesProcess(action) == true // Should check this process?
+		if(action->type == type // Is this a pre or post check?
+				&& matchesProcess(action) == true // Should check this process?
 				// Does it match our return address constraints?
-				&& ((action->retAddrMemType == 0 && action->retAddrMemMode == 0) ||
-				memCompareProtect(*(calledArgs - 1), action->retAddrMemMode, action->retAddrMemType))
-				&& matchesModule(actionConfModpath(action), *(calledArgs - 1)) //Should we check this module?
+				&& memCompareProtect(*(calledArgs - 1), action->retAddrMemMode, action->retAddrMemType)
+				&& moduleApplies(action, *(calledArgs - 1)) //Should we check this module?
 				&& argumentsMatch(action, calledArgs)){ //Do our argument conditions match?
 			sendAlert(conf, action, calledArgs);
 			//Take action!
@@ -301,7 +305,7 @@ DWORD WINAPI CreateProcessInternalWHook(PVOID token, LPCWSTR lpApplicationName, 
 		bInheritHandles, dwCreationFlags | CREATE_SUSPENDED, lpEnvironment, lpCurrentDirectory, lpStartupInfo, lpProcessInformation, unknown);
 
 	// If something weird or broken is happening, don't continue
-	if(retval == 0 || (dwCreationFlags  & CREATE_PROTECTED_PROCESS) != 0){
+	if(retval == 0 || (dwCreationFlags  & CREATE_PROTECTED_PROCESS) != 0 || token != 0 || unknown != 0){
 		if(!alreadySuspended)
 			ResumeThread(lpProcessInformation->hThread);
 		return retval;
@@ -433,27 +437,15 @@ bool hookDllApi(HMODULE dllHandle){
 
 	//Get DLL name
 	char filename[MAX_PATH+1];
-	char name[MAX_PATH+1];
 	if(GetModuleFileNameA(dllHandle, filename, sizeof(filename)) == 0)
 		return false; //uhoh - not a DLL?
-	int nameIndex = 0;
-	for(int i = 0; i < sizeof(filename); i++){
-		if(filename[i] == '\\'){
-			nameIndex = i+1;
-		}else{
-			name[i - nameIndex] = filename[i];
-			if(filename[i] >= 'A' && filename[i] <= 'Z')
-				name[i - nameIndex] += 0x20; //convert to lower
-			if(filename[i] == '\0')
-				break;
-		}
-	}
+	const char* name = strrchr(filename,'\\') + 1;
 
 	//Find DLL conf
 	HOOKAPI_DLL_CONF* dllConf = apiConfDlls(apiConf);
 	bool found = false;
 	for(unsigned int i = 0; i < apiConf->numdlls; i++){
-		if(strcmp(dllConf->name,name) == 0){
+		if(stricmp(dllConf->name,name) == 0){
 			found = true;
 			break;
 		}
@@ -468,7 +460,15 @@ bool hookDllApi(HMODULE dllHandle){
 	//Hook each function conf
 	HOOKAPI_FUNC_CONF* function = dllConfFunctions(dllConf);
 	for(unsigned int i = 0; i < dllConf->numFunctions; i++){
-		makeHook(GetProcAddress(dllHandle, function->name), function, &hook0);
+		bool valid = false;
+		HOOKAPI_ACTION_CONF* action = functionConfActions(function);
+		for(unsigned int i = 0; i < function->numActions; i++){
+			if(matchesProcess(action))
+				valid = true;
+			action = nextActionConf(action);
+		}
+		if(valid)
+			makeHook(GetProcAddress(dllHandle, function->name), function, &hook0);
 		function = nextFunctionConf(function); //next
 	}
 	enableAlerts(); //back to normal

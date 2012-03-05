@@ -52,7 +52,7 @@ class ActionsController < ApplicationController
 		a.setAction params[:act][:action]
 
 		#Return address conditions
-		if params[:retprotectType] != 'Ignore'
+		if params[:retprotectType] != 'ignore'
 			modeParam = params["subval-1"]
 			a.retprotectMode = @@memmodes[modeParam] || modeParam.to_i
 			a.retprotectMode = modeParam.to_i(16) if modeParam[0..1] == '0x' # handle 0xabc style
@@ -63,7 +63,7 @@ class ActionsController < ApplicationController
 		a.save
 
 		#Create args
-		types = ['Ignore', 'Integer', 'Range', 'C string', 'WC string', 'Pointer', 'Bitmask', 'Blob', 'Not']
+		types = ['ignore', 'integer', 'range', 'c string', 'wide-char string', 'pointer', 'bitmask', 'blob', 'not']
 		parameters = func.parameters.all(:order => 'num')
 		currentParam = 0
 		while params["name#{currentParam}"] != nil
@@ -76,10 +76,10 @@ class ActionsController < ApplicationController
 			raise "Error - invalid argument type; try one of these:\n#{types.inspect}" if arg.argtype == nil
 
 			#get val
-			arg.regExp = params["val#{currentParam}"] if ['C string', 'WC string', 'Blob'].index(types[arg.argtype])
-			arg.setval1(params["val#{currentParam}"]) if ['Integer', 'Range', 'Pointer', 'Bitmask', 'Not'].index(givenType)
-			arg.setval2(params["subval#{currentParam}"]) if ['Range', 'Bitmask'].index(givenType)
-			if(givenType == 'Pointer')
+			arg.regExp = params["val#{currentParam}"] if ['c string', 'wide-char string', 'blob'].index(types[arg.argtype])
+			arg.setval1(params["val#{currentParam}"]) if ['integer', 'range', 'pointer', 'bitmask', 'not'].index(givenType)
+			arg.setval2(params["subval#{currentParam}"]) if ['range', 'bitmask'].index(givenType)
+			if(givenType == 'pointer')
 				modeParam = params["subval#{currentParam}"]
 				arg.setval2(@@memmodes[modeParam] || modeParam.to_i)
 				arg.setval2(modeParam.to_i(16)) if modeParam[0..1] == '0x'

@@ -3,230 +3,155 @@ report: 192.168.1.11
 version: 1.0
 actions:
 - name: WinExec
-  action: ALERT
-  severity: 2000
+  action: alert
   function: WinExec
   dll: Kernel32.dll
   arguments:
-  - type: Ignore
-  - type: Ignore
+  - type: ignore
+  - type: ignore
+  severity: medium
 - name: DEP Policy Disable
-  action: ALERT
-  severity: 2000
+  action: alert
   function: SetProcessDEPPolicy
   dll: Kernel32.dll
   arguments:
-  - type: Integer
+  - type: integer
     val: 0
+  severity: medium
 - name: Process Injection - WPM
-  action: ALERT
-  severity: 2000
+  action: alert
   function: WriteProcessMemory
   dll: Kernel32.dll
   arguments:
-  - type: Not
+  - type: not
     val: -1
-  - type: Ignore
-  - type: Ignore
-  - type: Ignore
-  - type: Ignore
+  - type: ignore
+  - type: ignore
+  - type: ignore
+  - type: ignore
+  severity: medium
 - name: Stager - Wininet
-  action: ALERT
-  severity: 2000
+  action: alert
   function: InternetReadFile
   dll: Wininet.dll
   arguments:
-  - type: Ignore
-  - type: Pointer
-    mask type: ANY
+  - type: ignore
+  - type: pointer
+    mask type: any
     mask: 64
-  - type: Ignore
-  - type: Ignore
-- name: Process Injection - Open Proc
-  action: ALERT
-  severity: 2000
-  function: OpenProcess
-  dll: Kernel32.dll
-  arguments:
-  - type: Bitmask
-    mask type: ANY
-    mask: 2
-  - type: Ignore
-  - type: Ignore
+  - type: ignore
+  - type: ignore
+  severity: medium
 - name: Process Injection - Remote Thread
-  action: ALERT
-  severity: 2000
+  action: alert
   function: CreateRemoteThread
   dll: Kernel32.dll
   arguments:
-  - type: Not
+  - type: not
     val: -1
-  - type: Ignore
-  - type: Ignore
-  - type: Ignore
-  - type: Ignore
-  - type: Ignore
-  - type: Ignore
-- name: Process Injection - Suspended
-  action: ALERT
-  severity: 2000
-  function: CreateProcessA
-  dll: Kernel32.dll
-  arguments:
-  - type: Ignore
-  - type: Ignore
-  - type: Ignore
-  - type: Ignore
-  - type: Ignore
-  - type: Bitmask
-    mask type: ANY
-    mask: 4
-  - type: Ignore
-  - type: Ignore
-  - type: Ignore
-  - type: Ignore
-- name: Stager - Wininet HTTPS Request
-  action: BLOCK
-  severity: 0
-  function: HttpOpenRequestA
-  dll: Wininet.dll
-  arguments:
-  - type: Ignore
-  - type: Ignore
-  - type: Ignore
-  - type: Ignore
-  - type: Ignore
-  - type: Ignore
-  - type: Bitmask
-    mask type: ALL
-    mask: 8401408
-  - type: Ignore
-  retval:
-- name: Remote Control - keybd
-  action: ALERT
-  severity: 2000
-  function: keybd_event
-  dll: User32.dll
-  arguments:
-  - type: Ignore
-  - type: Ignore
-  - type: Ignore
-  - type: Ignore
+  - type: ignore
+  - type: ignore
+  - type: ignore
+  - type: ignore
+  - type: ignore
+  - type: ignore
+  severity: medium
 - name: Down/exec URL download
-  action: BLOCK
-  severity: 2000
+  action: block
   function: URLDownloadToFileA
   dll: Urlmon.dll
   arguments:
-  - type: Ignore
+  - type: ignore
     name: pCaller
-    paramtype: Integer
-  - type: Ignore
+    paramtype: integer
+  - type: ignore
     name: szURL
-    paramtype: C string
-  - type: Ignore
+    paramtype: c string
+  - type: ignore
     name: szFileName
-    paramtype: C string
-  - type: Ignore
+    paramtype: c string
+  - type: ignore
     name: dwReserved
-    paramtype: Integer
-  - type: Ignore
+    paramtype: integer
+  - type: ignore
     name: lpfnCB
-    paramtype: Integer
-  retval:
-- name: Shellcode - CreateProcessA
-  action: ALERT
-  severity: 2000
-  function: CreateProcessA
-  dll: Kernel32.dll
-  arguments:
-  - type: Ignore
-  - type: Ignore
-  - type: Ignore
-  - type: Ignore
-  - type: Ignore
-  - type: Ignore
-  - type: Ignore
-  - type: Ignore
-  - type: Ignore
-  - type: Ignore
-  retprotectMode: PAGE_EXECUTE_READWRITE
-- name: Stager - Wininet HTTPS
-  action: ALERT
-  severity: 2000
-  function: InternetSetOptionW
-  dll: Wininet.dll
-  arguments:
-  - type: Ignore
-  - type: Integer
-    val: 31
-  - type: Blob
-    size argument: 3
-    expression: ^\x80\x33
-  - type: Ignore
-- name: Stager - Wininet HTTPS A
-  action: ALERT
-  severity: 2000
-  function: InternetSetOptionA
-  dll: Wininet.dll
-  arguments:
-  - type: Ignore
-  - type: Integer
-    val: 31
-  - type: Blob
-    size argument: 3
-    expression: ^\x80\x33
-  - type: Ignore
+    paramtype: integer
+  retval: 0
+  severity: medium
 - name: Stager - Winsock
-  action: ALERT
-  severity: 2000
+  action: alert
   function: recv
   dll: Ws2_32.dll
   arguments:
-  - type: Ignore
+  - type: ignore
     name: s
-    paramtype: Integer
-  - type: Pointer
-    mask type: ANY
+    paramtype: integer
+  - type: pointer
+    mask type: any
     mask: 64
     name: buf
-    paramtype: Pointer
-  - type: Ignore
+    paramtype: pointer
+  - type: ignore
     name: len
-    paramtype: Integer
-  - type: Ignore
+    paramtype: integer
+  - type: ignore
     name: flags
-    paramtype: Integer
+    paramtype: integer
+  severity: medium
 - name: Hook W
-  action: ALERT
-  severity: 2000
+  action: alert
   function: SetWindowsHookExW
   dll: User32.dll
   arguments:
-  - type: Ignore
-  - type: Ignore
-  - type: Ignore
-  - type: Integer
+  - type: ignore
+  - type: ignore
+  - type: ignore
+  - type: integer
     val: 0
+  severity: medium
 - name: Hook A
-  action: ALERT
-  severity: 2000
+  action: alert
   function: SetWindowsHookExA
   dll: User32.dll
   arguments:
-  - type: Ignore
-  - type: Ignore
-  - type: Ignore
-  - type: Integer
+  - type: ignore
+  - type: ignore
+  - type: ignore
+  - type: integer
     val: 0
+  severity: medium
 - name: ! 'Open Remote '
-  action: ALERT
-  severity: 1000
+  action: alert
   function: OpenSCManagerA
   dll: Advapi32.dll
   arguments:
-  - type: C string
+  - type: c string
     expression: ^..*$
-  - type: Ignore
-  - type: Ignore
+  - type: ignore
+  - type: ignore
+  severity: low
+- name: Process Injection - Alloc RWX
+  action: alert
+  function: VirtualAllocEx
+  dll: Kernel32.dll
+  arguments:
+  - type: not
+    val: -1
+  - type: ignore
+  - type: ignore
+  - type: ignore
+  - type: integer
+    val: 64
+  severity: medium
+- name: Process Injection - Open Proc
+  action: alert
+  function: OpenProcess
+  dll: Kernel32.dll
+  arguments:
+  - type: bitmask
+    mask type: any
+    mask: 540673
+  - type: ignore
+  - type: ignore
+  severity: medium
 ...

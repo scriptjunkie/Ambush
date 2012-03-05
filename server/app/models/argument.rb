@@ -1,26 +1,26 @@
 class Argument < ActiveRecord::Base
 	belongs_to :action
 	belongs_to :parameter
-	@@types = ['Ignore', 'Integer', 'Range', 'C string', 'WC string', 'Pointer', 'Bitmask', 'Blob', 'Not']
-	@@masktypes = ['ANY','ALL','EXACT','NONE']
+	@@types = ['ignore', 'integer', 'range', 'c string', 'wide-char string', 'pointer', 'bitmask', 'blob', 'not']
+	@@masktypes = ['any','all','exact','none']
 
 	def to_s
 		begin
 			typestr = @@types[self.argtype].dup
 			case typestr
-			when 'Integer'
+			when 'integer'
 				typestr = "= #{self.val1.to_s}"
-			when 'Not'
+			when 'not'
 				typestr << " #{self.val1.to_s}"
-			when 'Range'
+			when 'range'
 				typestr << " #{self.val1.to_s}-#{self.val2.to_s}"
-			when 'Bitmask'
+			when 'bitmask'
 				typestr << " {#{@@masktypes[self.val1]} 0x#{self.val2.to_s(16)}}"
-			when 'C string'
+			when 'c string'
 				typestr << " #{self.regExp}"
-			when 'WC string'
+			when 'wide-char string'
 				typestr << " #{self.regExp}"
-			when 'Pointer'
+			when 'pointer'
 				typestr << " #{@@masktypes[self.val1]} 0x#{self.val2.to_s(16)}"
 			end
 			typestr
@@ -50,18 +50,18 @@ class Argument < ActiveRecord::Base
 	def simplified(defined)
 		simple = {'type' => @@types[self.argtype]}
 		case @@types[self.argtype]
-		when 'Ignore'
-		when 'Integer', 'Not'
+		when 'ignore'
+		when 'integer', 'not'
 			simple['val'] = self.val1
-		when 'Range'
+		when 'range'
 			simple['from'] = self.val1
 			simple['to'] = self.val2
-		when 'C string', 'WC string'
+		when 'c string', 'wide-char string'
 			simple['expression'] = self.regExp
-		when 'Pointer', 'Bitmask'
+		when 'pointer', 'bitmask'
 			simple['mask type'] = @@masktypes[self.val1]
 			simple['mask'] = self.val2
-		when 'Blob'
+		when 'blob'
 			simple['size argument'] = self.val1 if self.val2 = -1 or self.val2 == nil
 			simple['size'] = self.val2 if self.val1 == nil
 			simple['expression'] = self.regExp
@@ -82,19 +82,19 @@ class Argument < ActiveRecord::Base
 		arg.argtype = @@types.index(simple['type'])
 		raise Exception.new("Error - invalid argument type; try one of these:\n#{@@types.inspect}") if arg.argtype == nil
 
-		case simple['type']
-		when 'Ignore'
-		when 'Integer', 'Not'
+		case simple['type'].downcase
+		when 'ignore'
+		when 'integer', 'not'
 			arg.val1 = simple["val"]
-		when 'Range'
+		when 'range'
 			arg.sval1 = simple["from"]
 			arg.sval2 = simple["to"]
-		when 'C string', 'WC string'
+		when 'c string', 'wide-char string'
 			arg.regExp = simple["expression"]
-		when 'Pointer', 'Bitmask'
+		when 'pointer', 'bitmask'
 			arg.val1 = @@masktypes.index simple['mask type']
 			arg.val2 = simple['mask']
-		when 'Blob'
+		when 'blob'
 			arg.regExp = simple["expression"]
 			if simple.has_key? 'size argument'
 				arg.val1 = simple['size argument'] 
@@ -115,31 +115,31 @@ class Argument < ActiveRecord::Base
 	def compiled
 		out = [self.argtype].pack("V")
 		case @@types[self.argtype]
-		when 'Ignore'
-		when 'Integer', 'Not'
+		when 'ignore'
+		when 'integer', 'not'
 			raise 'Error - invalid integer' if self.val1 == nil
 			out << [self.val1].pack("Q")
-		when 'Range'
+		when 'range'
 			raise 'Error - invalid range' if self.val1 == nil or self.val2 == nil
 			out << [self.val1, self.val2].pack("QQ")
-		when 'C string'
+		when 'c string'
 			raise 'Error - invalid C string' if self.regExp == nil
 			stringVal = self.regExp+("\x00"*(4-(self.regExp.length % 4)))
 			out << [stringVal.length].pack("V*") + stringVal
-		when 'WC string'
+		when 'wide-char string'
 			raise 'Error - invalid wide char string' if self.regExp == nil
 			binaryVal = (self.regExp + "\x00").encode("UTF-16LE").force_encoding('binary')
 			stringVal = binaryVal + ("\x00" * (4 - (self.regExp.length % 4)))
 			out << [stringVal.length].pack("V*") + stringVal
-		when 'Pointer'
+		when 'pointer'
 			self.val1 = 0 if self.val1 == nil
 			raise "Error - invalid argument type for Pointer mode argument" if self.val2 == nil
 			out << [self.val1, self.val2].pack("V*")
-		when 'Bitmask'
+		when 'bitmask'
 			self.val1 = 0 if self.val1 == nil
 			raise "Error - invalid argument type for Bitmask mask argument" if self.val2 == nil
 			out << [self.val1, self.val2].pack("VQ")
-		when 'Blob'
+		when 'blob'
 			if (self.val1 == -1 and self.val2 == 0) or self.val1 == nil or self.val2 == nil #insufficient info
 				out = [0].pack("V") # ignore
 			else

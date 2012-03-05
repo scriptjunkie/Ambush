@@ -1,17 +1,17 @@
 class Parameter < ActiveRecord::Base
-	@@types = ['Ignore', 'Integer', 'Range', 'C string', 'WC string', 'Pointer', 'Bitmask', 'Blob', 'Not']
+	@@types = ['ignore', 'integer', 'range', 'c string', 'wide-char string', 'pointer', 'bitmask', 'blob', 'not']
 	belongs_to :available_function
 
 	def compiled
 		raise "Error - invalid parameter type" if self.paramtype == nil
 		out = [self.paramtype].pack("V*")
 		case @@types[self.paramtype]
-		when 'Ignore'
-		when 'Integer', 'Not', 'C string', 'WC string'
+		when 'ignore'
+		when 'integer', 'not', 'c string', 'wide-char string'
 			out << [0].pack("V*")
-		when 'Range', 'Pointer', 'Bitmask'
+		when 'range', 'pointer', 'bitmask'
 			out << [0, 0].pack("V*")
-		when 'Blob'
+		when 'blob'
 			Rails.logger.debug self.inspect
 			# if not a number, must be a ref
 			self.arg = -1 if self.arg == nil

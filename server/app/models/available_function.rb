@@ -10,7 +10,7 @@ class AvailableFunction < ActiveRecord::Base
 				{'available_dll_id' => dll.id, 'name' => funcname})
 
 		#Check if we need to make a new one - if it wasn't found or params have changed
-		paramtypes = ['?', 'Integer', '?', 'C string', 'WC string', 'Pointer', '?', 'Blob']
+		paramtypes = ['?', 'integer', '?', 'c string', 'wide-char string', 'pointer', '?', 'blob']
 		if func != nil
 			parameters = func.parameters.all(:order => 'num')
 			changed = parameters.length != funcparams.length
@@ -59,9 +59,8 @@ class AvailableFunction < ActiveRecord::Base
 		#setup name
 		fname = self.name + ("\x00"*(4-(self.name.length % 4)))
 		params = self.parameters.all(:order => 'num')
-		acts = self.actions.all
-		out = [params.length, acts.length, fname.length].pack("V*") + fname
-		acts.each do |action|
+		out = [params.length, actions.length, fname.length].pack("V*") + fname
+		actions.each do |action|
 			out << action.compiled
 		end
 		params.each do |parameter|
