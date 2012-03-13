@@ -24,10 +24,10 @@ ActiveRecord::Schema.define(:version => 20120303183139) do
     t.integer "retprotectMode"
     t.integer "actiontype"
     t.text    "notes"
-    t.string  "modblacklist"
-    t.string  "modwhitelist"
-    t.string  "procblacklist"
-    t.string  "procwhitelist"
+    t.text  "modblacklist"
+    t.text  "modwhitelist"
+    t.text  "procblacklist"
+    t.text  "procwhitelist"
   end
 
   create_table "alert_args", :force => true do |t|
@@ -72,7 +72,7 @@ ActiveRecord::Schema.define(:version => 20120303183139) do
 
   create_table "available_functions", :force => true do |t|
     t.string  "name"
-    t.string  "decl"
+    t.text  "decl"
     t.integer "available_dll_id"
   end
 

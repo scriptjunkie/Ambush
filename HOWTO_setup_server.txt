@@ -34,3 +34,40 @@ cd ambush/server
 xdg-open http://localhost:3000/
 
 #6. Follow instructions to enter a user/pass for the admin
+
+######### setup for rails vm:
+
+download http://bitnami.org/download/files/stacks/rubystack/3.2.1-0/bitnami-rubystack-3.2.1-0-ubuntu-10.10.zip
+Start, change password
+
+#now, either simply type these commands: 
+sudo bash 
+wget http://www.scriptjunkie.us/files/installbitnami.sh
+sh installbitnami.sh
+
+#
+# OR manually do everything
+#
+
+cd /opt/bitnami/projects
+# git checkout ambush or copy over
+# either way the "server" folder should be dropped into /opt/bitnami/projects/
+chown -R daemon server/
+chgrp -R daemon server/
+rm server/Gemfile.lock
+cd server
+bundle install
+#remove or comment out the DocumentRoot directive and the entire <Directory /opt/bitnami/apache2/htdocs> section in /opt/bitnami/apache2/conf/httpd.conf and add the following lines to the end:
+DocumentRoot /opt/bitnami/projects/server/public
+RailsBaseURI /
+<Directory /opt/bitnami/projects/server/public>
+	Allow from all
+</Directory>
+#change 'host: localhost' to 'socket: /opt/bitnami/mysql/tmp/mysql.sock' in config/database.yml
+
+/opt/bitnami/apache2/scripts/ctl.sh stop
+/opt/bitnami/apache2/scripts/ctl.sh start
+RAILS_ENV=production
+export RAILS_ENV
+rake db:setup
+#it will ask you for your mysql root password; it is bitnami, then you will wait as it seeds the DB.

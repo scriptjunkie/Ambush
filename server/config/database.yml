@@ -16,5 +16,11 @@ test:
   database: db/test.sqlite3
 
 production:
-  adapter: sqlite3
-  database: db/production.sqlite3
+  adapter: mysql2
+  encoding: utf8
+  reconnect: false
+  database: ambush
+  pool: 5
+  host: localhost
+  username: ambush
+  password: password
