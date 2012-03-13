@@ -66,7 +66,7 @@ typedef void* (WINAPI *NoArgFunc)();
 typedef HMODULE (WINAPI *OneArgFunc)(void*); //For setEax
 typedef HMODULE (WINAPI *ThreeArgFunc)(void*,void*,void*); //For callApi
 typedef void** (WINAPI *hookArgFunc)();
-typedef NTSTATUS (NTAPI *LdrLoadDllHookFunc)(PWCHAR, ULONG, PVOID, PHANDLE);
+typedef NTSTATUS (NTAPI *LdrLoadDllHookFunc)(PWCHAR, PVOID, PVOID, PHANDLE);
 
 //MICROSOFT DEFINES from MSDN - because win SDK does not have a complete set
 /*

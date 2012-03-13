@@ -320,10 +320,14 @@ DWORD WINAPI CreateProcessInternalWHook(PVOID token, LPCWSTR lpApplicationName, 
 }
 
 //Hook for ntdll!LdrLoadDll - ensures newly loaded libraries are hooked
-NTSTATUS NTAPI LdrLoadDllHook(PWCHAR PathToFile, ULONG Flags, PVOID ModuleFileName, PHANDLE ModuleHandle){
-	NTSTATUS result = realLdrLoadDll(PathToFile, Flags, ModuleFileName, ModuleHandle);
-	if(ModuleHandle != NULL && *ModuleHandle != NULL)
-		hookDllApi((HMODULE)*ModuleHandle);
+NTSTATUS NTAPI LdrLoadDllHook(PWCHAR PathToFile, PVOID Flags, PVOID ModuleFileName, PHANDLE ModuleHandle){
+	NTSTATUS result = 0;
+	__try{
+		result = realLdrLoadDll(PathToFile, Flags, ModuleFileName, ModuleHandle);
+		if(ModuleHandle != NULL && *ModuleHandle != NULL)
+			hookDllApi((HMODULE)*ModuleHandle);
+	}__except(EXCEPTION_EXECUTE_HANDLER){ //On exception - don't take action.
+	}
 	return result;
 }
 
@@ -409,10 +413,12 @@ bool prepHookApi(){
 		*((PWORD)((PBYTE)stackFixups[i] + sizeof(STACK_FIXUP) - 1)) = i * sizeof(void*); // sets the return value
 	}
 
-	HMODULE colonel = GetModuleHandleA("kernel32");
+	FARPROC cpiw = GetProcAddress(GetModuleHandleA("kernelbase.dll"), "CreateProcessInternalW");
+	if(cpiw == NULL)
+		cpiw = GetProcAddress(GetModuleHandleA("kernel32"), "CreateProcessInternalW");
+
 	//Hook CreateProcessInternal calls to ensure apihook is loaded into new processes
-	hooker->createHook<CreateProcessInternalWFunc>((CreateProcessInternalWFunc)
-		GetProcAddress(colonel, "CreateProcessInternalW"), 
+	hooker->createHook<CreateProcessInternalWFunc>((CreateProcessInternalWFunc)cpiw, 
 		(CreateProcessInternalWFunc)CreateProcessInternalWHook, &CreateProcessInternalWReal);
 
 	//Setup LdrLoadDll to ensure signatures are loaded on dynamically-loaded DLLs

@@ -89,7 +89,7 @@ int CALLBACK WinMain(HINSTANCE,HINSTANCE,LPSTR,int){
 	memset(&proc,0,sizeof(proc));
 	start.cb = sizeof(start);
 	char cmdline[100];
-	lstrcpyA(cmdline,"cmd.exe");
+	lstrcpyA(cmdline,"C:\\Program Files\\Internet Explorer\\iexplore.exe");
 	if(ask("Start cmd")){
 		CreateProcessA(NULL,cmdline,NULL,NULL,0,0,NULL,NULL,&start,&proc);
 		HMODULE hmods[100];

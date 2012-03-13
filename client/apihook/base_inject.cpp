@@ -614,6 +614,7 @@ DWORD dll_inject_load( HANDLE hProcess ){
 	LPVOID lpDllBuffer = NULL;
 	DWORD dwDllLength  = 0;
 
+	__try{
 	do{
 		dwPidArch = ps_getarch( hProcess );
 		if(!injectPrepped)
@@ -632,5 +633,7 @@ DWORD dll_inject_load( HANDLE hProcess ){
 		dwResult = inject_dll( hProcess, dwPidArch, lpDllBuffer, dwDllLength );
 
 	} while( 0 );
+	}__except(EXCEPTION_EXECUTE_HANDLER){ //On exception - don't take action.
+	}
 	return dwResult;
 }

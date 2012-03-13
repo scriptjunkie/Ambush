@@ -23,9 +23,14 @@ inline opcodeAddr getJmpTarget(ud_t &ud_obj){
 			default:
 				return NULL;
 		}
-	}else if (op.type == UD_OP_MEM && op.base == UD_R_RIP && op.index == UD_NONE && op.scale == 0){
-		opcodeAddr* memaddr = (opcodeAddr*)((char*)ud_obj.pc + op.lval.sdword);
-		return *memaddr;
+	}else if (op.type == UD_OP_MEM){
+		if(op.base == UD_R_RIP && op.index == UD_NONE && op.scale == 0){
+			opcodeAddr* memaddr = (opcodeAddr*)((char*)ud_obj.pc + op.lval.sdword);
+			return *memaddr;
+		}else if(op.base == UD_NONE && op.index == UD_NONE && op.scale == 0){
+			opcodeAddr* memaddr = (opcodeAddr*)(op.lval.uqword);
+			return *memaddr;
+		}
 	}
 	return NULL;
 }
@@ -92,8 +97,10 @@ opcodeAddr NCodeHook<ArchT>::getPatchSite(opcodeAddr codePtr, // where to start
 			}
 		// nop nop nop nop nop  mov edi,edi for winapi patch points
 		}else if(ud_obj.pc - inslen == (uint64_t)codePtr && ud_obj.mnemonic == UD_Imov 
-				&& *((PUSHORT)codePtr) == 0xFF8B && *((PDWORD)(codePtr - 4)) == 0x90909090 &&
-				*(codePtr - 5) == 0x90 && !architecture_.requiresAbsJump(codePtr - 5, hookFunction)){
+				&& *((PUSHORT)codePtr) == 0xFF8B &&
+				(memcmp(codePtr-5,"\xCC\xCC\xCC\xCC\xCC",5) == 0 ||
+				memcmp(codePtr-5,"\x90\x90\x90\x90\x90",5) == 0)
+				&& !architecture_.requiresAbsJump(codePtr - 5, hookFunction)){
 			winapiPatchPoint = (unsigned short *)codePtr;
 			nextBlock = codePtr + 2; //Resume after our patch
 			*patchSize = 0; 
