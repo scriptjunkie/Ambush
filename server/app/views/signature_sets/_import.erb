@@ -1,0 +1,10 @@
+<div class="modal small" id="import">
+	<h2 id="modalTitle">Signature set import</h2>
+	<div style="margin:15px"><form enctype="multipart/form-data" method="POST" id="importform" action='/signature_sets/'>
+		<div><input type="file" name="imported"></input></div>
+		<div><input type="submit" value="Submit"></input>
+		<input type="hidden" value="<%=form_authenticity_token %>" name="authenticity_token"></input>
+		<input type="submit" value="Close" onclick="closeOverlay(&quot;#import&quot;);return false;"></input></div>
+	</form>
+	</div>
+</div>
