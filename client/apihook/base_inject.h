@@ -3,6 +3,7 @@
 #define _BASE_INJECT_H
 //===============================================================================================//
 #include <Tlhelp32.h>
+#include "apihook.h"
 
 #define PROCESS_ARCH_UNKNOWN				0
 #define PROCESS_ARCH_X86					1

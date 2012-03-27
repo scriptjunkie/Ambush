@@ -80,7 +80,6 @@ typedef struct _LSA_UNICODE_STRING {
   USHORT MaximumLength;
   PWSTR  Buffer;
 } LSA_UNICODE_STRING, *PLSA_UNICODE_STRING, UNICODE_STRING, *PUNICODE_STRING;
-
 typedef struct _LDR_DATA_TABLE_ENTRY {
    PVOID Reserved1[2];
    LIST_ENTRY InMemoryOrderLinks;
