@@ -1,3 +1,4 @@
+require 'socket'
 class SignatureSet < ActiveRecord::Base
 	has_many :actions, :dependent => :destroy
 
@@ -42,7 +43,9 @@ class SignatureSet < ActiveRecord::Base
 		# set ourselves as default report IP
 		self.report = getDefaultIp if self.report == nil
 		mname = self.report.to_s
-		mname = mname + ("\x00"* (4-(mname.length % 4)) )
+		mname = mname + ("\x00" * (4 - (mname.length % 4)) )
+		blist = self.procblacklist.to_s
+		blist = blist + ("\x00" * (4 - (blist.length % 4)) )
 
 		dlls = AvailableDll.find(:all,:joins => "INNER JOIN available_functions ON available_functions.available_dll_id = available_dlls.id INNER JOIN actions ON available_functions.id = actions.available_function_id",:select => 'DISTINCT(available_dlls.name),available_dlls.*')
 		numdlls = 0
@@ -55,7 +58,7 @@ class SignatureSet < ActiveRecord::Base
 			end
 		end
 
-		out << [numdlls, mname.length].pack("V*") + mname + temp
+		out << [numdlls, mname.length, blist.length].pack("V*") + mname + blist + temp
 		# version, serialNumber, numdlls, pipeNameLen, pipeName, dlls[]
 		fout = File.open(self.cachepath, 'wb')
 		fout.write out
@@ -134,7 +137,6 @@ class SignatureSet < ActiveRecord::Base
 
 	def getDefaultIp
 		begin
-			require 'socket'
 			sock = UDPSocket.open
 			sock.connect('1.2.3.4', 1234)
 			add = sock.addr.last
@@ -145,4 +147,17 @@ class SignatureSet < ActiveRecord::Base
 		add
 	end
 
+	# sends message to the aggregator
+	def sendSyslog(message)
+		return if self.aggregator == nil or self.aggregator.length == 0
+		self.aggregator_port = 514 if self.aggregator_port == nil or self.aggregator_port == 0
+		begin
+			s = UDPSocket.new
+			s.send message, 0, self.aggregator, self.aggregator_port
+			s.close
+		rescue Exception => e
+			Rails.logger.error e
+			Rails.logger.error e.backtrace
+		end
+	end
 end

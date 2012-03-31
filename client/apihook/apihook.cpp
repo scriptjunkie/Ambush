@@ -353,23 +353,9 @@ bool makeHook(void* origProcAddr, void* farg, void* hook){
 //Prepares some memory items we'll need before calling makeHook on an arbitrary function
 //and loads configuration into memory. THIS IS RUN IN DLLMAIN AND CANNOT LOAD LIBRARIES!
 bool prepHookApi(){
-	//Setup TLS alert enable/disable (disabled by default)
-	setupAlertsDisabled();
-
-	//get heaps and allocate dllHandles list
+	//Get rw heap
 	rwHeap = GetProcessHeap();
 	if(rwHeap == NULL)
-		return false;
-	rwxHeap = HeapCreate(HEAP_CREATE_ENABLE_EXECUTE,0,0);
-
-	//Our DLL-wide hooker, per-arch
-	#ifdef _M_X64
-	hooker = new NCodeHook<ArchitectureX64> (rwxHeap);
-	#else
-	hooker = new NCodeHook<ArchitectureIA32>(rwxHeap);
-	#endif
-	dllHandles = (HMODULE*)HeapAlloc(rwHeap, 0, 32 * sizeof(HMODULE));
-	if(dllHandles == NULL) //no memory. c'mon!
 		return false;
 
 	//Find configuration file from same binary directory as this file
@@ -391,6 +377,27 @@ bool prepHookApi(){
 			return false;
 	}
 	CloseHandle(sigFileHandle);
+
+	//If there is a blacklist, and it excludes us, abort before we hook anything
+	PCHAR pbl = apiConfProcBlacklist(apiConf);
+	if(pbl[0] != 0 && !matchesModule(pbl, "", NULL)){
+		HeapFree(rwHeap,0,apiConf);
+		return false;
+	}
+
+	//We're good to load - make an RWX heap and setup TLS alert enable/disable 
+	setupAlertsDisabled();
+	rwxHeap = HeapCreate(HEAP_CREATE_ENABLE_EXECUTE,0,0);
+
+	//Our DLL-wide hooker, per-arch
+	#ifdef _M_X64
+	hooker = new NCodeHook<ArchitectureX64> (rwxHeap);
+	#else
+	hooker = new NCodeHook<ArchitectureIA32>(rwxHeap);
+	#endif
+	dllHandles = (HMODULE*)HeapAlloc(rwHeap, 0, 32 * sizeof(HMODULE));
+	if(dllHandles == NULL) //no memory. c'mon!
+		return false;
 
 	//Setup getHookArg(), setEax(), getPEB(), and callApi()
 	getHookArg = (hookArgFunc)HeapAlloc(rwxHeap, 0, sizeof(GET_HOOK_ARG));

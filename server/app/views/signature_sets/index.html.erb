@@ -7,7 +7,8 @@
 		<table>
 			<tbody>
 				<tr><td><p class="dialog">Field</p></td><td><p class="dialog">Value</p></td></tr>
-				<tr><td><p class="dialog">Report server</p></td><td><input id="signature_set_report" name="signature_set[report]" size="30" type="text" value="" title="The server to send alerts to" /></td></tr>
+				<tr><td><p class="dialog">Name</p></td><td><input id="signature_set_name" name="signature_set[name]" size="30" type="text" value="" title="The name of the signature set" /></td></tr>
+				<tr><td><p class="dialog">Report server</p></td><td><input id="signature_set_report" name="signature_set[report]" size="30" type="text" value="" title="The server to send alerts to (probably this server)" /></td></tr>
 				<tr><td><p class="dialog">Version</p></td><td><input id="signature_set_version" name="signature_set[version]" size="30" type="text" value="" title="" /></td></tr>
 			</tbody>
 		</table>
@@ -22,13 +23,13 @@
 <div class="content">
 <table class="sortable" style="width: 100%">
 	<div class="caption">Signature Sets</div>
-	<thead><tr><th scope="col">Number</th><th scope="col">Signatures</th><th scope="col"></th></tr></thead>
+	<thead><tr><th scope="col">Number</th><th scope="col">Name</th><th scope="col">Signatures</th><th scope="col"></th></tr></thead>
 	<tbody id="sigtbody">
 	<% @signature_sets.each do |signature_set| %>
-		<tr><th id="<%= signature_set.id %>_box"><%= signature_set.id %></th><td><a href="<%= url_for signature_set %>">View/Edit Signatures</a></td><td><a onclick="deleteSignatureSet(<%=signature_set.id %>)">Delete Signature Set</a></td></tr>			
+		<tr><th id="<%= signature_set.id %>_box"><%= signature_set.id %></th><td><a href="<%= url_for signature_set %>"><%= signature_set.name %></td><td><a href="<%= url_for signature_set %>">View/Edit Signatures</a></td><td><a onclick="deleteSignatureSet(<%=signature_set.id %>)">Delete Signature Set</a></td></tr>			
 	<% end %>
 	</tbody>
-	<tfoot><tr><td colspan="3"></td></tr></tfoot>
+	<tfoot><tr><td colspan="4"></td></tr></tfoot>
 </table>
 </div>
 <div class="content">

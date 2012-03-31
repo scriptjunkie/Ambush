@@ -82,7 +82,10 @@ class SignatureSetsController < ApplicationController
 		@signature_set.save
 		ids = @signature_set.id.to_s
 		respond_with({:message => 'Signature successfully created!', 
-			:row => '<tr><th id="' + ids + '_box">' + ids + '</th><td><a href="/signature_sets/' + ids + '">View/Edit Signatures</a></td><td><a onclick="deleteSignatureSet(' + ids + ')">Delete Signature Set</a></td></tr>'}, :location => nil)
+			:row => '<tr><th id="' + ids + '_box">' + ids + '</th><td><a href="/signature_sets/' + ids + '">' + 
+			@signature_set.name + '</a></td><td><a href="/signature_sets/' + ids + 
+			'">View/Edit Signatures</a></td><td><a onclick="deleteSignatureSet(' + ids + 
+			')">Delete Signature Set</a></td></tr>'}, :location => nil)
 	end
 
 	# PUT /signature_sets/1

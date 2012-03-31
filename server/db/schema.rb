@@ -11,7 +11,7 @@
 #
 # It's strongly recommended to check this file into your version control system.
 
-ActiveRecord::Schema.define(:version => 20120303183139) do
+ActiveRecord::Schema.define(:version => 20120328233442) do
 
   create_table "actions", :force => true do |t|
     t.string  "name"
@@ -91,11 +91,15 @@ ActiveRecord::Schema.define(:version => 20120303183139) do
   add_index "parameters", ["available_function_id"], :name => "index_parameters_on_available_function_id"
 
   create_table "signature_sets", :force => true do |t|
-    t.string   "report"
     t.float    "version"
+    t.string   "report"
     t.integer  "serial"
     t.datetime "created_at"
     t.datetime "updated_at"
+    t.string   "name"
+    t.string   "procblacklist"
+    t.string   "aggregator"
+    t.integer  "aggregator_port"
   end
 
   add_index "signature_sets", ["serial", "version"], :name => "index_signature_sets_on_serial_and_version", :unique => true

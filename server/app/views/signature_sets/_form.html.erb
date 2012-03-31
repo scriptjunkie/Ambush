@@ -17,10 +17,14 @@
 	<div class="caption">Signature set <%= @signature_set.id %> - details</div>
 	<thead><tr><th scope="col">Field</th><th scope="col">Value</th></tr></thead>
 	<tbody>
+		<tr><td>Name</td><td><%= text_field :signature_set, :name %></td></tr>
 		<tr><td>Report server</td><td><%= text_field :signature_set, :report %></td></tr>
 		<tr><td>Version</td><td><%= text_field :signature_set, :version %></td></tr>
 		<tr><td>ADM file</td><td><a onclick="getAdm(<%= @signature_set.id %>)">Download</a></td></tr>
 		<tr><td>Export as YAML</td><td><a href="/signature_sets/<%= @signature_set.id %>/yaml">Download</a></td></tr>
+		<tr><td>Alert aggregator (syslog)</td><td><%= text_field :signature_set, :aggregator %></td></tr>
+		<tr><td>Aggregator port (default 514)</td><td><%= text_field :signature_set, :aggregator_port %></td></tr>
+		<tr><td>Process blacklist</td><td><%= text_area :signature_set, :procblacklist %></td></tr>
 	</tbody>
 	<tfoot><tr><td colspan="2">  </td></tr></tfoot>
 </table>

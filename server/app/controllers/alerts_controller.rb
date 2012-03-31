@@ -81,6 +81,9 @@ class AlertsController < ApplicationController
 				modlen = message.slice!(0, 4).unpack('V')[0]
 				@alert.module = message.slice!(0, modlen).force_encoding("UTF-16LE").encode('UTF-8')
 
+				#report to log aggregator if necessary
+				@alert.action.signature_set.sendSyslog(@alert.toSyslog)
+
 				#check for dups
 				lastAlert = Alert.where(:pid => @alert.pid, :user => @alert.user, :action_id => aid, :ip => @alert.ip, 
 						:computer => @alert.computer).where('created_at > ?', Time.current - 3600).first

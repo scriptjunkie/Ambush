@@ -5,7 +5,11 @@ class ApplicationController < ActionController::Base
   private
 
   def current_user
-    @current_user ||= User.find(session[:user_id]) if session[:user_id]
+    begin
+      @current_user ||= User.find(session[:user_id]) if session[:user_id]
+    rescue
+      nil
+    end
   end
 
   # call this as a before_filter to require them to be logged in
