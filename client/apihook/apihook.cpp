@@ -305,7 +305,7 @@ DWORD WINAPI CreateProcessInternalWHook(PVOID token, LPCWSTR lpApplicationName, 
 		bInheritHandles, dwCreationFlags | CREATE_SUSPENDED, lpEnvironment, lpCurrentDirectory, lpStartupInfo, lpProcessInformation, unknown);
 
 	// If something weird or broken is happening, don't continue
-	if(retval == 0 || (dwCreationFlags  & CREATE_PROTECTED_PROCESS) != 0 || token != 0 || unknown != 0){
+	if(retval == 0 || (dwCreationFlags  & (CREATE_PROTECTED_PROCESS | DEBUG_ONLY_THIS_PROCESS | DEBUG_PROCESS)) != 0 || token != 0 || unknown != 0){
 		if(!alreadySuspended)
 			ResumeThread(lpProcessInformation->hThread);
 		return retval;

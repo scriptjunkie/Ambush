@@ -65,6 +65,16 @@ BOOL (WINAPI *mWinHttpWriteData)(
   __in   DWORD dwNumberOfBytesToWrite,
   __out  LPDWORD lpdwNumberOfBytesWritten
 );
+BOOL (WINAPI *CSSDTSDA)(
+  __in   LPCSTR StringSecurityDescriptor,
+  __in   DWORD StringSDRevision,
+  __out  PSECURITY_DESCRIPTOR *SecurityDescriptor,
+  __out  PULONG SecurityDescriptorSize
+);
+BOOL (WINAPI *mGetUserNameW)(
+  __out    LPWSTR lpBuffer,
+  __inout  LPDWORD lpnSize
+) = NULL;
 PWCHAR computerName = NULL;
 DWORD computerNameLen = 0;
 WCHAR exeFileName[MAX_PATH];
@@ -110,10 +120,10 @@ BOOL checkIn(){
 	message->pid = GetCurrentProcessId();
 	memcpy(((char*)message) + sizeof(HOOKAPI_MESSAGE), commandLine, commandLineLen);
 	//Check in 
-	CallNamedPipeA(LOCAL_REPORT_PIPE, message, message->length, &result, 
+	BOOL retval = CallNamedPipeA(LOCAL_REPORT_PIPE, message, message->length, &result, 
 			sizeof(result), &cbRead, NMPWAIT_WAIT_FOREVER);
 	HeapFree(rwHeap, 0, message);
-	return TRUE;
+	return retval;
 }
 
 //Endlessly polls queue for new alerts, sending them to the HTTP server
@@ -289,12 +299,17 @@ BOOL runLocalServer(HANDLE servPipe){
 
 //Checks whether or not there is a local logging server alive, and checks in or becomes one as necessary
 BOOL checkLogging(){
+	if(checkIn() != FALSE)
+		return TRUE;
 	//Become the logging server if nobody has yet
 	//And set security rules so that all processes can send and receive data from me
 	DWORD newSDsize;
 	PSECURITY_DESCRIPTOR newSD;
-	ConvertStringSecurityDescriptorToSecurityDescriptorA("D:(D;;FA;;;NU)(A;;0x12019b;;;WD)(A;;0x12019f;;;CO)",
-		SDDL_REVISION_1, &newSD, &newSDsize);
+	CSSDTSDA = (BOOL (WINAPI *)(LPCSTR,DWORD,PSECURITY_DESCRIPTOR *, PULONG))
+		GetProcAddress(LoadLibraryA("Advapi32.dll"), "ConvertStringSecurityDescriptorToSecurityDescriptorA");
+	if(CSSDTSDA == NULL)
+		return FALSE;
+	CSSDTSDA("D:(D;;FA;;;NU)(A;;0x12019b;;;WD)(A;;0x12019f;;;CO)", SDDL_REVISION_1, &newSD, &newSDsize);
 	SECURITY_ATTRIBUTES sa;
 	sa.nLength = sizeof(sa);
 	sa.lpSecurityDescriptor = newSD;
@@ -304,7 +319,7 @@ BOOL checkLogging(){
 	LocalFree(newSD); //Now we're done.
 	//Did it work?
 	if(servPipe == INVALID_HANDLE_VALUE)
-		return checkIn(); //We're not the logging server. Just check in.
+		return checkIn(); //We're not the logging server. Try to check in again.
 	return runLocalServer(servPipe);// Otherwise we are 
 }
 
@@ -312,9 +327,13 @@ BOOL checkLogging(){
 void sendAlert(HOOKAPI_FUNC_CONF* conf, HOOKAPI_ACTION_CONF* action, void** calledArgPtr){
 	disableAlerts(); //Don't allow recursive alerts!
 
+	//Resolve function if necessary
+	if(mGetUserNameW == NULL)
+		mGetUserNameW = (BOOL (WINAPI *)(LPWSTR,LPDWORD)) 
+				GetProcAddress(LoadLibraryA("Advapi32.dll"),"GetUserNameW");
 	WCHAR username[UNLEN+1];
 	DWORD userlen = UNLEN+1;
-	if(GetUserNameW(username, &userlen) == FALSE)
+	if(mGetUserNameW == NULL || mGetUserNameW(username, &userlen) == FALSE)
 		userlen = 0; // try to get username
 	//Prepare a binary string
 	string messageStr;
