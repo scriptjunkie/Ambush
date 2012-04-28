@@ -15,6 +15,7 @@ Ambush::Application.routes.draw do
   match 'signup' => 'users#new', :as => :signup
   match 'logout' => 'sessions#destroy'
   match 'login' => 'sessions#new'
+  match 'installer_sig' => 'signature_sets#installer_sig'
 
   resources :signature_sets
   resources :condition

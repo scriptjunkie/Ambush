@@ -378,6 +378,12 @@ bool prepHookApi(){
 	}
 	CloseHandle(sigFileHandle);
 
+	//If this signature is a different version than we were built for, don't go.
+	if(apiConf->version != HOOKAPI_SIG_VERSION){
+		HeapFree(rwHeap,0,apiConf);
+		return false;
+	}
+
 	//If there is a blacklist, and it excludes us, abort before we hook anything
 	PCHAR pbl = apiConfProcBlacklist(apiConf);
 	if(pbl[0] != 0 && !matchesModule(pbl, "", NULL)){

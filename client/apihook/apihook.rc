@@ -20,6 +20,7 @@
 LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 #pragma code_page(1252)
 #endif //_WIN32
+
 #ifdef APSTUDIO_INVOKED
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -73,7 +74,11 @@ BEGIN
             VALUE "FileVersion", "1, 0, 0, 0"
             VALUE "InternalName", "apihook"
             VALUE "LegalCopyright", "Copyright (C) Matthew Weeks 2011"
+#ifdef _M_X64
+            VALUE "OriginalFilename", "apihook64.dll"
+#else
             VALUE "OriginalFilename", "apihook.dll"
+#endif
             VALUE "ProductName", "Ambush Host Intrusion Prevention System"
             VALUE "ProductVersion", "1, 0, 0, 0"
         END

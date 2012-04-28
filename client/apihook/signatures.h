@@ -1,5 +1,7 @@
 #pragma once
 
+#define HOOKAPI_SIG_VERSION 1.0f
+
 enum ArgType { DONTCARE, DWORD_HOOK, DWORDRANGE, CSTRING, WCSTRING, MEM, BITMASK, BLOB_HOOK, DWORD_NEQ };
 
 #pragma pack(push,4)
@@ -136,7 +138,7 @@ inline PHOOKAPI_DLL_CONF nextDllConf(PHOOKAPI_DLL_CONF conf){
 
 typedef struct sHOOKAPI_CONF
 {
-    unsigned int   version;
+    float          version;
     unsigned int   serial;
     unsigned int   numdlls;
 	unsigned int   reportServerLen;

@@ -304,6 +304,14 @@
 			<File
 				RelativePath=".\apihook.rc"
 				>
+				<FileConfiguration
+					Name="Release|x64"
+					>
+					<Tool
+						Name="VCResourceCompilerTool"
+						PreprocessorDefinitions="_M_X64"
+					/>
+				</FileConfiguration>
 			</File>
 		</Filter>
 	</Files>

@@ -1,6 +1,9 @@
 require 'socket'
 class SignatureSet < ActiveRecord::Base
 	has_many :actions, :dependent => :destroy
+	# if the signature_version does not match what the client agents were built for, it 
+	# will trigger an update
+	@@signature_version = 1.0
 
 	def cachepath
 		File.join(File.dirname(__FILE__), '..', 'assets', 'sigs', self.id.to_s + '_compiled')
@@ -10,18 +13,44 @@ class SignatureSet < ActiveRecord::Base
 		File.join(File.dirname(__FILE__), '..', 'assets', 'sigs', self.id.to_s + '_signature')
 	end
 
-	def signature
-		if File.file? self.signaturepath
-			fin = File.open(self.signaturepath, 'rb')
+	def self.installerpath
+		File.join(File.dirname(__FILE__), '..', '..', 'public', 'installer.msi')
+	end
+
+	def self.installersigpath
+		File.join(File.dirname(__FILE__), '..', 'assets', 'sigs', 'installer_sig')
+	end
+
+	# provides a signature for an arbitrary block of data, cached with a file path
+	def self.get_signature(sigpath)
+		# use cached if present
+		if File.file? sigpath
+			fin = File.open(sigpath, 'rb')
 			data = fin.read fin.stat.size
 			fin.close
 			return data
 		end
-		data = sign(self.compiled)
-		fout = File.open(self.signaturepath, 'wb')
+		# otherwise generate and save
+		data = sign(yield)
+		fout = File.open(sigpath, 'wb')
 		fout.write data
 		fout.close
 		data
+	end
+
+	# provides a signature for the compiled signature set
+	def signature
+		SignatureSet.get_signature(signaturepath){ self.compiled }
+	end
+
+	# provides a signature for the client binary installer
+	def self.installer_sig
+		self.get_signature(self.installersigpath) do
+			fin = File.open(self.installerpath, 'rb')
+			data = fin.read fin.stat.size
+			fin.close
+			data
+		end
 	end
 
 	def markchanged
@@ -38,8 +67,7 @@ class SignatureSet < ActiveRecord::Base
 		end
 		
 		self.serial = 1 if self.serial == nil
-		self.version = 1 if self.serial == nil
-		out = [self.version, self.serial].pack('eV')
+		out = [@@signature_version, self.serial].pack('eV')
 		# set ourselves as default report IP
 		self.report = getDefaultIp if self.report == nil
 		mname = self.report.to_s
@@ -86,20 +114,20 @@ class SignatureSet < ActiveRecord::Base
 		f.close
 	end
 
-	def pubpath
+	def self.pubpath
 		File.join(File.dirname(__FILE__), '..', '..', 'public', 'public.key')
 	end
 
-	def privpath
+	def self.privpath
 		File.join(File.dirname(__FILE__), '..', 'assets', 'sigs', 'private.key')
 	end
 
-	def pubkey
+	def self.pubkey
 		genkeys if not File.file? self.pubpath
 		return IO.read(self.pubpath)
 	end
 
-	def sign(data)
+	def self.sign(data)
 		genkeys if not File.file? self.privpath
 		proc = IO.popen('openssl dgst -sign "' + self.privpath + '"','w+')
 		proc.write(data)

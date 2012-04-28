@@ -164,6 +164,25 @@ bool getFile(HINTERNET connection, LPCWCHAR path, const char * filename){
 	CloseHandle(fileHandle);
 	return true;
 }
+//Clears the scheduled update task
+void clearSchedTask(){
+	//Clear scheduled task
+	STARTUPINFOW siStartupInfo;
+	PROCESS_INFORMATION piProcessInfo;
+	memset(&siStartupInfo, 0, sizeof(siStartupInfo));
+	memset(&piProcessInfo, 0, sizeof(piProcessInfo));
+	siStartupInfo.cb = sizeof(siStartupInfo);
+	WCHAR cmdline[1000];
+	lstrcpyW(cmdline, L"schtasks /delete /tn AmbushSigUpdate /f");
+	// set directory
+	WCHAR dirbuf[2000];
+	GetSystemDirectoryW(dirbuf,1999);
+	SetCurrentDirectoryW(dirbuf);
+	// run command
+	if (CreateProcessW(NULL, cmdline, 0, 0, FALSE, 0, 0, 0, &siStartupInfo, &piProcessInfo) == FALSE)
+		cerr << "Error unscheduling update task.\n";
+	WaitForSingleObject(piProcessInfo.hProcess, 10000);
+}
 //Downloads and verifies new signatures if possible
 void doUpdate(){
 	//Find configuration file from same binary directory as this file
@@ -210,7 +229,7 @@ void doUpdate(){
 	wsprintfW(compiledURL, L"/signature_sets/%d/compiled", sigset);
 	WCHAR signedURL[40];
 	wsprintfW(signedURL,  L"/signature_sets/%d/signature", sigset);
-	if(!getFile(hConnect, compiledURL, "sigtemp.dat") 
+	if(!getFile(hConnect, compiledURL, TEMP_SIG_FILE) 
 			|| !getFile(hConnect, signedURL, "signed.dat"))
 		return;
 
@@ -237,24 +256,61 @@ void doUpdate(){
 		MoveFileA("pubtmp.key","pub.key"); //It's official! Install is complete; we have a key
 	}
 
-	//Verify signature
+	DWORD exitCode;
+	HOOKAPI_CONF conf;
+	DWORD read;
+	HANDLE temp_sig_file;
+	//Create process junk
 	memset(&start, 0, sizeof(start));
 	memset(&proc, 0, sizeof(proc));
 	start.cb = sizeof(start);
+	//To move DLLs to that we can't delete yet
+	char tempname[MAX_PATH];
+	char tempname64[MAX_PATH];
+	//If digest verification fails
 	if(CreateProcessA(NULL,"openssl.exe dgst -sha1 -verify pub.key -signature signed.dat sigtemp.dat",
-			NULL,NULL,FALSE,0,NULL,NULL,&start,&proc)){
-		WaitForSingleObject(proc.hProcess, 100000); //This shouldn't take that long
-		DWORD exitCode;
-		if(GetExitCodeProcess(proc.hProcess, &exitCode) && exitCode == 0){
+			NULL,NULL,FALSE,0,NULL,NULL,&start,&proc) == FALSE
+			|| WaitForSingleObject(proc.hProcess, 100000) == WAIT_TIMEOUT //This shouldn't take that long
+			|| GetExitCodeProcess(proc.hProcess, &exitCode) == FALSE || exitCode != 0){
+		printf( "Error - signature verification failed!\n");
+	//error if can't open temp sig file
+	}else if((temp_sig_file = CreateFileA(TEMP_SIG_FILE, GENERIC_READ, 0, NULL, OPEN_EXISTING, 0, NULL)) == INVALID_HANDLE_VALUE 
+			|| ReadFile(temp_sig_file, &conf, sizeof(conf), &read, NULL) == FALSE){
+		printf( "Error - cannot read sig file!\n");
+	}else if(printf("Current version %f sig set version %f", HOOKAPI_SIG_VERSION, conf.version) < 0){
+		//what?! printf failed?!
+	//if we don't need to update code (older or same version)
+	}else if(conf.version - HOOKAPI_SIG_VERSION < 0.0001F){
+		if (HOOKAPI_SIG_VERSION - conf.version <= 0.0001F){ //same version
+			//apply updated sig file
+			CloseHandle(temp_sig_file);
 			DeleteFileA(SIG_FILE);
 			MoveFileA(TEMP_SIG_FILE, SIG_FILE);
-		}else{
-			printf( "Error - signature verification hung!\n");
-			return; //File verification hung
 		}
-	}else {
-		printf( "Error - signature verification failed!\n");
-		return;
+	//if the code updates fail to download
+	}else if(getFile(hConnect, L"/installer.msi", "installer.msi") == false
+			|| getFile(hConnect, L"/installer_sig", "installer.sig") == false){
+		printf( "Error - cannot get signature for code update!\n");
+	//if code verification fails
+	}else if(CreateProcessA(NULL,"openssl.exe dgst -sha1 -verify pub.key -signature installer.sig installer.msi",
+			NULL,NULL,FALSE,0,NULL,NULL,&start,&proc) == FALSE
+			|| WaitForSingleObject(proc.hProcess, 100000) == WAIT_TIMEOUT //This shouldn't take that long
+			|| GetExitCodeProcess(proc.hProcess, &exitCode) == FALSE || exitCode != 0){
+		printf( "Error - update failed signature check!\n");
+	//if we can't run the update (this requires swapping out DLLs that may be in use)
+	}else if(GetTempFileNameA(".","adl",0,tempname) == FALSE 
+			|| MoveFileExA("apihook.dll",tempname, MOVEFILE_REPLACE_EXISTING) == FALSE
+			|| GetTempFileNameA(".","a64",0,tempname64) == FALSE 
+			|| MoveFileExA("apihook64.dll",tempname64, MOVEFILE_REPLACE_EXISTING) == FALSE
+			|| CreateProcessA(NULL,"cmd /c msiexec /q /log installlog.txt /i installer.msi & msiexec /q /fa installer.msi",NULL,NULL,FALSE,0,NULL,NULL,&start,&proc) == FALSE
+			|| MoveFileExA(tempname64, NULL, MOVEFILE_DELAY_UNTIL_REBOOT) == FALSE
+			|| MoveFileExA(tempname, NULL, MOVEFILE_DELAY_UNTIL_REBOOT) == FALSE){
+		printf( "Error - cannot run update!\n");
+		//Replace files if moved
+		MoveFileA(tempname,"apihook.dll");
+		MoveFileA(tempname64,"apihook64.dll");
+	}else{
+		printf("Code update started!");
 	}
 	if (hConnect) WinHttpCloseHandle(hConnect);
 	if (hSession) WinHttpCloseHandle(hSession);
@@ -346,6 +402,8 @@ int main(int argc, char** argv){
 			RegSetValueExA(winkey64, "RequireSignedAppInit_DLLs", 0, REG_DWORD, (PBYTE)&zero, sizeof(DWORD));
 			RegSetValueExA(winkey64, "AppInit_DLLs", 0, REG_SZ, (PBYTE)appinitDlls64, strlen(appinitDlls64));
 		}
+		//Clear scheduled update if already installed (for update)
+		clearSchedTask();
 		//Schedule updates every four hours
 		WCHAR cmdbuf[2000];
 		WCHAR fn[2000];
@@ -385,25 +443,9 @@ int main(int argc, char** argv){
 	}else if(command.compare("uninstall") == 0 || command.compare("/Uninstall") == 0){ //UNINSTALL
 		//Replace keys
 		removeReg();
-
-		//Clear scheduled task
-		STARTUPINFOW siStartupInfo;
-		PROCESS_INFORMATION piProcessInfo;
-		memset(&siStartupInfo, 0, sizeof(siStartupInfo));
-		memset(&piProcessInfo, 0, sizeof(piProcessInfo));
-		siStartupInfo.cb = sizeof(siStartupInfo);
-		WCHAR cmdline[1000];
-		lstrcpyW(cmdline, L"schtasks /delete /tn AmbushSigUpdate /f");
-		// set directory
-		WCHAR dirbuf[2000];
-		GetSystemDirectoryW(dirbuf,1999);
-		SetCurrentDirectoryW(dirbuf);
-		// run command
-		if (CreateProcessW(NULL, cmdline, 0, 0, FALSE, 0, 0, 0, &siStartupInfo, &piProcessInfo) == FALSE)
-			cerr << "Error unscheduling update task.\n";
+		clearSchedTask();
 	}else if(command.compare("update") == 0){
 		doUpdate();
-		Sleep(1000);
 		return 0;
 	}else{
 		die("Unknown command");

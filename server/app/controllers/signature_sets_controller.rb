@@ -1,6 +1,6 @@
 class SignatureSetsController < ApplicationController
 	protect_from_forgery
-	before_filter :login_required, :except => [:compiled, :signature]
+	before_filter :login_required, :except => [:compiled, :signature, :installer_sig]
 	respond_to :json
 	respond_to :html
 
@@ -30,6 +30,11 @@ class SignatureSetsController < ApplicationController
 	def signature
 		@signature_set = SignatureSet.find(params[:id])
 		send_data @signature_set.signature
+	end
+
+	# GET /installer_sig
+	def installer_sig
+		send_data SignatureSet.installer_sig
 	end
 
 	# GET /signature_sets/1/adm
