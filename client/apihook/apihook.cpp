@@ -5,6 +5,7 @@
 #include <Windows.h>
 #include <stdarg.h>
 #include <map>
+#include <Strsafe.h>
 using namespace std;
 #include "NCodeHook.cpp"
 #include "signatures.h"
@@ -254,7 +255,7 @@ bool actionsBlock(HOOKAPI_FUNC_CONF* conf, void** calledArgs, DWORD type, void**
 		//Next action
 		action = nextActionConf(action);
 	}
-	}__except(EXCEPTION_EXECUTE_HANDLER){ //On exception - don't take action.
+	}__except(exceptionFilter(GetExceptionInformation())){ //On exception - don't take action.
 	}
 	return false;
 }
@@ -308,6 +309,13 @@ DWORD WINAPI CreateProcessInternalWHook(PVOID token, LPCWSTR lpApplicationName, 
 	if(retval == 0 || (dwCreationFlags  & (CREATE_PROTECTED_PROCESS | DEBUG_ONLY_THIS_PROCESS | DEBUG_PROCESS)) != 0 || token != 0 || unknown != 0){
 		if(!alreadySuspended)
 			ResumeThread(lpProcessInformation->hThread);
+		//Log error and reason
+		WCHAR errorinfo[300];
+		errorinfo[0] = 0;
+		StringCbPrintfExW(errorinfo, sizeof(errorinfo), NULL, NULL, STRSAFE_IGNORE_NULLS,
+				L"CreateProcessInternalWHook abort - retval %d creation flags %p token %p a2 %p appname %s cmdline %s",
+				retval, dwCreationFlags, token, unknown, lpApplicationName, lpCommandLine);
+		reportError(errorinfo);
 		return retval;
 	}
 
@@ -326,7 +334,7 @@ NTSTATUS NTAPI LdrLoadDllHook(PWCHAR PathToFile, PVOID Flags, PVOID ModuleFileNa
 		result = realLdrLoadDll(PathToFile, Flags, ModuleFileName, ModuleHandle);
 		if(ModuleHandle != NULL && *ModuleHandle != NULL)
 			hookDllApi((HMODULE)*ModuleHandle);
-	}__except(EXCEPTION_EXECUTE_HANDLER){ //On exception - don't take action.
+	}__except(exceptionFilter(GetExceptionInformation())){ //On exception - don't take action.
 	}
 	return result;
 }
@@ -371,16 +379,18 @@ bool prepHookApi(){
 	DWORD dontcare;
 	DWORD fileSize = GetFileSize(sigFileHandle,NULL);
 	if(fileSize == -1 || sigFileHandle == INVALID_HANDLE_VALUE ||
-		(apiConf = (HOOKAPI_CONF*)HeapAlloc(rwHeap,0,fileSize)) == NULL ||
-		ReadFile(sigFileHandle,apiConf,fileSize,&dontcare,NULL) == FALSE){
-			CloseHandle(sigFileHandle);
-			return false;
+			(apiConf = (HOOKAPI_CONF*)HeapAlloc(rwHeap,0,fileSize)) == NULL ||
+			ReadFile(sigFileHandle,apiConf,fileSize,&dontcare,NULL) == FALSE){
+		CloseHandle(sigFileHandle);
+		reportError(L"Could not read configuration file");
+		return false;
 	}
 	CloseHandle(sigFileHandle);
 
 	//If this signature is a different version than we were built for, don't go.
 	if(apiConf->version != HOOKAPI_SIG_VERSION){
 		HeapFree(rwHeap,0,apiConf);
+		reportError(L"Invalid signature version");
 		return false;
 	}
 

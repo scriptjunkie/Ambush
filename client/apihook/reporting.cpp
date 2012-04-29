@@ -104,24 +104,33 @@ BOOL loadWinHTTP(){
 		&& mWinHttpConnect != NULL && mWinHttpOpen != NULL && mWinHttpWriteData != NULL;
 }
 
+//Sends raw data to local server
+BOOL sendPipeMessage(PVOID data, DWORD length){DWORD numbytes = 0;
+	HANDLE pipe = CreateFileA(LOCAL_REPORT_PIPE, FILE_WRITE_DATA, 7, NULL, OPEN_ALWAYS,0,0);
+	for(int i = 0; pipe == INVALID_HANDLE_VALUE && i < 10; i++){ // Up to 10 tries if it fails
+		WaitNamedPipeA(LOCAL_REPORT_PIPE, 500);
+		pipe = CreateFileA(LOCAL_REPORT_PIPE, FILE_WRITE_DATA, FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,
+			NULL,OPEN_EXISTING,0,0);
+	}
+	BOOL retval = WriteFile(pipe, data, length, &numbytes, NULL);
+	CloseHandle(pipe); //not really anything we can do if writing fails
+	return retval;
+}
+
 //Checks into a listening local server - not ours
-BOOL checkIn(){
-	DWORD result = 0;
-	DWORD cbRead;
-	PWCHAR commandLine = GetCommandLineW();
-	DWORD commandLineLen = lstrlenW(commandLine) * sizeof(WCHAR); //in bytes
-	DWORD size = commandLineLen + sizeof(HOOKAPI_MESSAGE); //size of struct
+BOOL logString(PWCHAR messageStr, DWORD messageType){
+	DWORD messageStrLen = lstrlenW(messageStr) * sizeof(WCHAR); //in bytes
+	DWORD size = messageStrLen + sizeof(HOOKAPI_MESSAGE); //size of struct
 	PHOOKAPI_MESSAGE message = (PHOOKAPI_MESSAGE)HeapAlloc(rwHeap, 0, size);
 	if(message == NULL)
 		return FALSE; // no memory. sad face.
 	message->length = size;
-	message->type = START_INFO;
+	message->type = messageType;
 	message->numArgs = 0;
 	message->pid = GetCurrentProcessId();
-	memcpy(((char*)message) + sizeof(HOOKAPI_MESSAGE), commandLine, commandLineLen);
+	memcpy(((char*)message) + sizeof(HOOKAPI_MESSAGE), messageStr, messageStrLen);
 	//Check in 
-	BOOL retval = CallNamedPipeA(LOCAL_REPORT_PIPE, message, message->length, &result, 
-			sizeof(result), &cbRead, NMPWAIT_WAIT_FOREVER);
+	BOOL retval = sendPipeMessage(message, message->length);
 	HeapFree(rwHeap, 0, message);
 	return retval;
 }
@@ -217,15 +226,18 @@ DWORD WINAPI HTTPthread(AlertQueueNode* argnode){
 BOOL runLocalServer(HANDLE servPipe){
 	//Get output filename from same directory as this file
 	char filename[1000];
+	char backupFilename[1000];
 	DWORD size = GetModuleFileNameA(myDllHandle, filename, sizeof(filename));
 	for(size -= 1; filename[size] != '\\' && size != 0; size--)
 		filename[size] = 0;
-	strcat_s(filename, REPORT_FILE); // yes, I know this is VS-specific
+	strcat_s(filename, REPORT_FILE);
+	strcpy_s(backupFilename, filename); // yes, I know these are VS-specific
+	strcat_s(backupFilename, ".1");
 	//Open the file
 	HANDLE outputFile = CreateFileA(filename,FILE_APPEND_DATA,FILE_SHARE_READ,NULL,OPEN_ALWAYS,
 		FILE_ATTRIBUTE_HIDDEN|FILE_ATTRIBUTE_SYSTEM,NULL);
 	if(outputFile == INVALID_HANDLE_VALUE)
-		return 0; //we can't store our messages!
+		return FALSE; //we can't store our messages!
 
 	// Ok, we're good. Now disable alerts from this thread to prevent recursive alerts.
 	disableAlerts();
@@ -239,6 +251,18 @@ BOOL runLocalServer(HANDLE servPipe){
 	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST); // So we don't drop alerts
 	PHOOKAPI_MESSAGE message;
 	while(true){
+
+		//If we run into size limit on our log file, move to backup and reopen
+		LARGE_INTEGER fsize;
+		if(GetFileSizeEx(outputFile, &fsize) == TRUE && fsize.QuadPart > LOG_FILE_SIZE_LIMIT){
+			CloseHandle(outputFile);
+			MoveFileExA(filename, backupFilename, MOVEFILE_REPLACE_EXISTING);
+			HANDLE outputFile = CreateFileA(filename,FILE_APPEND_DATA,FILE_SHARE_READ,NULL,OPEN_ALWAYS,
+				FILE_ATTRIBUTE_HIDDEN|FILE_ATTRIBUTE_SYSTEM,NULL);
+			if(outputFile == INVALID_HANDLE_VALUE)
+				return FALSE; //we can't store our messages!
+		}
+
 		message = (PHOOKAPI_MESSAGE)HeapAlloc(rwHeap, 0, 2000);
 		if(message == NULL){ //This has got to work. so just wait until it does
 			Sleep(1000);
@@ -282,7 +306,7 @@ BOOL runLocalServer(HANDLE servPipe){
 		FlushFileBuffers(outputFile);
 
 		//Don't send start infos to server
-		if(message->type == START_INFO)
+		if(message->type == START_INFO || message->type == ERROR_INFO)
 			continue;
 		//Send rest to server
 		PVOID nextNode = HeapAlloc(rwHeap,HEAP_ZERO_MEMORY,sizeof(AlertQueueNode));
@@ -295,6 +319,36 @@ BOOL runLocalServer(HANDLE servPipe){
 			SetEvent(oldNode->eventHandle);
 		}
 	}
+}
+
+//Checks in
+BOOL checkIn(){
+	return logString(GetCommandLineW(), START_INFO);
+}
+
+//Sends error string
+BOOL reportError(PWCHAR errorStr){
+	return logString(errorStr, ERROR_INFO);
+}
+
+//On exception, sets the pointers and executes handler
+DWORD exceptionFilter(LPEXCEPTION_POINTERS pointers){
+	PCONTEXT cpuinfo = pointers->ContextRecord;
+	//Put exception information into a string to be logged
+	WCHAR errorinfo[400];
+#ifdef _M_X64
+	wsprintfW(errorinfo, L"exception %d address %p modbase %p RAX %p RBX %p RCX %p RDX %p RSP %p RBP %p RSI %p RDI %p RIP %p",
+		pointers->ExceptionRecord->ExceptionCode, pointers->ExceptionRecord->ExceptionAddress, myDllHandle,
+		cpuinfo->Rax, cpuinfo->Rbx, cpuinfo->Rcx, cpuinfo->Rdx, cpuinfo->Rsp, cpuinfo->Rbp, cpuinfo->Rsi, cpuinfo->Rdi, cpuinfo->Rip);
+#else
+	wsprintfW(errorinfo, L"exception %d address %p modbase %p EAX %p EBX %p ECX %p EDX %p ESP %p EBP %p ESI %p EDI %p EIP %p",
+		pointers->ExceptionRecord->ExceptionCode, pointers->ExceptionRecord->ExceptionAddress, myDllHandle,
+		cpuinfo->Eax, cpuinfo->Ebx, cpuinfo->Ecx, cpuinfo->Edx, cpuinfo->Esp, cpuinfo->Ebp, cpuinfo->Esi, cpuinfo->Edi, cpuinfo->Eip);
+#endif
+	//Report to log
+	reportError(errorinfo);
+	//We're done. Don't pass along
+	return EXCEPTION_EXECUTE_HANDLER;
 }
 
 //Checks whether or not there is a local logging server alive, and checks in or becomes one as necessary
@@ -416,15 +470,7 @@ void sendAlert(HOOKAPI_FUNC_CONF* conf, HOOKAPI_ACTION_CONF* action, void** call
 	//Put it all together into a complete message
 	string completeMessage((char*)&message, sizeof(message));
 	completeMessage.append(messageStr);
-	DWORD numbytes = 0;
-	//Send it! (locally)
-	HANDLE pipe = CreateFileA(LOCAL_REPORT_PIPE, FILE_WRITE_DATA, 7, NULL, OPEN_ALWAYS,0,0);
-	for(int i = 0; pipe == INVALID_HANDLE_VALUE && i < 10; i++){ // Up to 10 tries if it fails
-		WaitNamedPipeA(LOCAL_REPORT_PIPE, 500);
-		pipe = CreateFileA(LOCAL_REPORT_PIPE, FILE_WRITE_DATA, FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,
-			NULL,OPEN_EXISTING,0,0);
-	}
-	WriteFile(pipe, (PVOID)completeMessage.c_str(), (DWORD)completeMessage.length(), &numbytes, NULL);
-	CloseHandle(pipe); //not really anything we can do if writing fails
+	//Send it
+	sendPipeMessage((PVOID)completeMessage.c_str(), (DWORD)completeMessage.length());
 	enableAlerts(); // back to normal
 }

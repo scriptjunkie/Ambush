@@ -1,6 +1,7 @@
 #include <Windows.h>
 #include "base_inject.h"
 #include "apihook.h"
+#include "reporting.h"
 
 // Simple trick to get the current arch
 #ifdef _M_X64
@@ -633,7 +634,7 @@ DWORD dll_inject_load( HANDLE hProcess ){
 		dwResult = inject_dll( hProcess, dwPidArch, lpDllBuffer, dwDllLength );
 
 	} while( 0 );
-	}__except(EXCEPTION_EXECUTE_HANDLER){ //On exception - don't take action.
+	}__except(exceptionFilter(GetExceptionInformation())){ //On exception - don't take action.
 	}
 	return dwResult;
 }

@@ -12,6 +12,8 @@ using namespace std;
 typedef BOOL (WINAPI *Wow64DisableWow64FsRedirectionFunc) ( __out PVOID *OldValue );
 typedef BOOL (WINAPI *IsWow64ProcessFunc)(  __in   HANDLE hProcess,  __out  PBOOL Wow64Process);
 
+void dumpLog(HANDLE inputHandle);
+
 //Key values
 DWORD loadAppInit32 = 1, requireSignedAppInit32 = 0, loadAppInit64 = 1, requireSignedAppInit64 = 0;
 char appinitDlls32[33000];
@@ -323,7 +325,7 @@ int main(int argc, char** argv){
 	string command(argv[1]);
 	//Open key (32)
 	if(RegOpenKeyExA(HKEY_LOCAL_MACHINE,"Software\\Microsoft\\Windows NT\\CurrentVersion\\Windows",
-			0,KEY_QUERY_VALUE|KEY_SET_VALUE|KEY_WOW64_32KEY,&winkey32) != ERROR_SUCCESS && command.compare("update") != 0)
+			0,KEY_QUERY_VALUE|KEY_SET_VALUE|KEY_WOW64_32KEY,&winkey32) != ERROR_SUCCESS && command.compare("update") != 0 && command.compare("dumplog") != 0)
 		die("Error opening key. Insufficient permissions?");
 	//Get AppInit_DLLs values - might not exist
 	if(RegQueryValueExA(winkey32,"LoadAppInit_DLLs",NULL,NULL,(PBYTE)&loadAppInit32,&length) != ERROR_SUCCESS)
@@ -447,6 +449,8 @@ int main(int argc, char** argv){
 	}else if(command.compare("update") == 0){
 		doUpdate();
 		return 0;
+	}else if(command.compare("dumplog") == 0){
+		dumpLog(CreateFileA(argv[2], GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,NULL,OPEN_EXISTING,0,NULL));
 	}else{
 		die("Unknown command");
 	}
