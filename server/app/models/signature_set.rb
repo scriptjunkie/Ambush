@@ -96,14 +96,14 @@ class SignatureSet < ActiveRecord::Base
 
 	# Key mgmt functions
 	#Generate a new key pair
-	def genkeys
-		privkey = `openssl genpkey -algorithm RSA`
+	def self.genkeys
+		privkey = `openssl genrsa 2048`
 
 		f = open(self.privpath, 'wb')
 		f.write(privkey)
 		f.close
 
-		proc = IO.popen('openssl pkey -pubout','w+')
+		proc = IO.popen('openssl rsa -pubout','w+')
 		proc.write(privkey)
 		proc.close_write
 		pubkey = proc.read
@@ -129,7 +129,7 @@ class SignatureSet < ActiveRecord::Base
 
 	def self.sign(data)
 		genkeys if not File.file? self.privpath
-		proc = IO.popen('openssl dgst -sign "' + self.privpath + '"','w+')
+		proc = IO.popen('openssl dgst -sha1 -sign "' + self.privpath + '"','w+')
 		proc.write(data)
 		proc.close_write
 		dgst = proc.read

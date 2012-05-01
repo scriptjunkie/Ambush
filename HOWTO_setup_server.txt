@@ -37,8 +37,8 @@ xdg-open http://localhost:3000/
 
 ######### setup for rails vm:
 
-download http://bitnami.org/download/files/stacks/rubystack/3.2.1-0/bitnami-rubystack-3.2.1-0-ubuntu-10.10.zip
-Start, change password
+download http://bitnami.org/files/stacks/rubystack/3.2.1-1/bitnami-rubystack-3.2.1-1-opensuse-11.3.zip
+Start, change password, and ensure your ssh keys are in
 
 #now, either simply type these commands: 
 sudo bash 
