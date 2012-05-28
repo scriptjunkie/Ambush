@@ -219,7 +219,6 @@ DWORD WINAPI HTTPthread(AlertQueueNode* argnode){
 		if (hRequest) mWinHttpCloseHandle(hRequest);
 		if (hConnect) mWinHttpCloseHandle(hConnect);
 	}
-	if (hSession) mWinHttpCloseHandle(hSession); //not that we'll ever get here...
 }
 
 //Keep track of alerts on this system, log them to disk and report to server

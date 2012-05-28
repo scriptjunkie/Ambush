@@ -474,7 +474,7 @@ bool hookDllApi(HMODULE dllHandle){
 	HOOKAPI_DLL_CONF* dllConf = apiConfDlls(apiConf);
 	bool found = false;
 	for(unsigned int i = 0; i < apiConf->numdlls; i++){
-		if(stricmp(dllConf->name,name) == 0){
+		if(_stricmp(dllConf->name,name) == 0){
 			found = true;
 			break;
 		}

@@ -144,15 +144,14 @@ bool NCodeHook<ArchT>::createHook(U originalFunc, U hookFunc, U* trampAddr){
 	if(nextBlock == NULL)
 		nextBlock = (opcodeAddr)originalFunc + patchSize;
 
-	// error while determining offset?
-	if ((char*)originalFunc == (char*)-1){
-		if(swapAddr != NULL){ // We can still do a swap if that is an option
-			*(opcodeAddr*)trampAddr = *swapAddr;
-			*swapAddr = (opcodeAddr)hookFunc;
-			return true;
-		}
-		return false; //Ok. We tried everything, and it still didn't work. *sigh*
+	if(swapAddr != NULL){ // Let's do a swap if that is an option
+		*(opcodeAddr*)trampAddr = *swapAddr;
+		*swapAddr = (opcodeAddr)hookFunc;
+		HeapFree(trampolineHeap, 0, trampolineAddr);
+		return true;
 	}
+	if ((char*)originalFunc == (char*)-1)
+		return false; //Ok. We tried everything, and it still didn't work. *sigh*
 
 	DWORD oldProtect = 0;
 	BOOL retVal = VirtualProtect((LPVOID)originalFunc, ArchT::MaxTrampolineSize, PAGE_EXECUTE_READWRITE, &oldProtect);
@@ -160,6 +159,7 @@ bool NCodeHook<ArchT>::createHook(U originalFunc, U hookFunc, U* trampAddr){
 
 	//No trampoline necessary if no instructions to reconstruct!
 	if(patchSize == 0){
+		HeapFree(trampolineHeap, 0, trampolineAddr); //get rid of it
 		*(opcodeAddr*)trampAddr = nextBlock;
 	}else{ // copy instructions to trampoline
 		memcpy((void*)trampolineAddr, (void*)originalFunc, patchSize);

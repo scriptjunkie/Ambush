@@ -389,23 +389,15 @@ DWORD inject_via_remotethread_wow64( HANDLE hProcess, LPVOID lpStartAddress, HAN
 	return dwResult;
 }
 
-/*
- * Attempte to gain code execution in the remote process by creating a remote thread in the target process.
- */
+// Attempte to gain code execution in the remote process by creating a remote thread in the target process.
 DWORD inject_via_remotethread(HANDLE hProcess, DWORD dwDestinationArch, LPVOID lpStartAddress){
-	DWORD dwResult    = ERROR_SUCCESS;
-	DWORD dwTechnique = INJECT_TECHNIQUE_REMOTETHREAD;
-	HANDLE hThread    = NULL;
-	DWORD dwThreadId  = 0;
-
 	// Create the thread in the remote process. Create suspended in case the call to CreateRemoteThread
 	// fails, giving us a chance to try an alternative method or fail injection gracefully.
-	hThread = CreateRemoteThread( hProcess, NULL, 1024*1024, (LPTHREAD_START_ROUTINE)lpStartAddress, NULL, CREATE_SUSPENDED, &dwThreadId );
+	DWORD dwThreadId  = 0;
+	HANDLE hThread = CreateRemoteThread( hProcess, NULL, 1024*1024, (LPTHREAD_START_ROUTINE)lpStartAddress, NULL, CREATE_SUSPENDED, &dwThreadId );
 	if( !hThread ){
 		if(arch == PROCESS_ARCH_X86 && dwDestinationArch == PROCESS_ARCH_X64){
 			// injecting x86(wow64)->x64, (we expect the call to kernel32!CreateRemoteThread to fail and bring us here).
-
-			dwTechnique = INJECT_TECHNIQUE_REMOTETHREADWOW64;
 
 			if( inject_via_remotethread_wow64( hProcess, lpStartAddress, &hThread ) != ERROR_SUCCESS )
 				return FALSE; //BREAK_ON_ERROR( "[INJECT] inject_via_remotethread: inject_via_remotethread_wow64 failed" )
@@ -413,7 +405,6 @@ DWORD inject_via_remotethread(HANDLE hProcess, DWORD dwDestinationArch, LPVOID l
 			return FALSE; //BREAK_ON_ERROR( "[INJECT] inject_via_remotethread: CreateRemoteThread failed" )
 		}
 	}
-	//dprintf("[INJECT] inject_via_remotethread: Resuming the injected thread..." );
 	// Resume the injected thread...
 	if( ResumeThread( hThread ) == (DWORD)-1 )
 		return FALSE; //BREAK_ON_ERROR( "[INJECT] inject_via_remotethread: ResumeThread failed" )
@@ -422,8 +413,7 @@ DWORD inject_via_remotethread(HANDLE hProcess, DWORD dwDestinationArch, LPVOID l
 		WaitForSingleObject( hThread, 1000 );// Wait for it to load
 	if( hThread )
 		CloseHandle( hThread );
-	SetLastError( dwResult );
-	return dwResult;
+	return ERROR_SUCCESS;
 }
 
 /*
@@ -433,131 +423,62 @@ DWORD inject_via_remotethread(HANDLE hProcess, DWORD dwDestinationArch, LPVOID l
  *       dll_inject_load() will handle this automatically.
  */
 BOOL inject_dll( HANDLE hProcess, DWORD pidArch, LPVOID lpBuffer, DWORD dwLength ){
-	BOOL dwResult                 = TRUE;
-	LPVOID lpRemoteLibraryBuffer   = NULL;
+	if( !lpBuffer || !dwLength || !hProcess )
+		return FALSE; //BREAK_WITH_ERROR( "[INJECT] inject_dll.  No Dll buffer supplied.", ERROR_INVALID_PARAMETER );
 
-	do{
-		if( !lpBuffer || !dwLength )
-			return FALSE; //BREAK_WITH_ERROR( "[INJECT] inject_dll.  No Dll buffer supplied.", ERROR_INVALID_PARAMETER );
-
-		if( !hProcess )
-			return FALSE; //BREAK_ON_ERROR( "[INJECT] inject_dll. OpenProcess failed." ); 
-
-		// alloc memory (RWX) in the host process for the image...
-		lpRemoteLibraryBuffer = VirtualAllocEx( hProcess, NULL, dwLength, MEM_RESERVE|MEM_COMMIT, PAGE_EXECUTE_READWRITE ); 
-		if( !lpRemoteLibraryBuffer )
-			break; //BREAK_ON_ERROR( "[INJECT] inject_dll. VirtualAllocEx 2 failed" ); 
-
-		// write the image into the host process...
-		if( !WriteProcessMemory( hProcess, lpRemoteLibraryBuffer, lpBuffer, dwLength, NULL ) )
-			break; //BREAK_ON_ERROR( "[INJECT] inject_dll. WriteProcessMemory 2 failed" ); 
-
-		// First we try to inject by directly creating a remote thread in the target process
-		if( inject_via_remotethread( hProcess, pidArch, lpRemoteLibraryBuffer ) != ERROR_SUCCESS ){
-			//dprintf( "[INJECT] inject_dll. inject_via_remotethread failed, trying inject_via_apcthread..." );
-			
+	// classic VAE-WPM-CRT
+	LPVOID lpRemoteLibraryBuffer = VirtualAllocEx( hProcess, NULL, dwLength, MEM_RESERVE|MEM_COMMIT, PAGE_EXECUTE_READWRITE ); 
+	return lpRemoteLibraryBuffer != NULL
+			&& WriteProcessMemory( hProcess, lpRemoteLibraryBuffer, lpBuffer, dwLength, NULL )
+			&& (inject_via_remotethread( hProcess, pidArch, lpRemoteLibraryBuffer ) == ERROR_SUCCESS
 			// If that fails we can try to inject via a queued APC in the target process
-			if( inject_via_apcthread( hProcess, pidArch, lpRemoteLibraryBuffer ) != ERROR_SUCCESS )
-				break; //BREAK_ON_ERROR( "[INJECT] inject_dll. inject_via_apcthread failed" )
-		}
-
-		dwResult = TRUE;
-
-	} while( 0 );
-
-	return dwResult;
+				|| inject_via_apcthread( hProcess, pidArch, lpRemoteLibraryBuffer ) == ERROR_SUCCESS);
 }
 
-/*
- * Get the native architecture of the system we are running on.
- */
+// Get the native architecture of the system we are running on.
 DWORD ps_getnativearch( VOID ){
-	HMODULE hKernel                           = NULL;
-	GETNATIVESYSTEMINFO pGetNativeSystemInfo = NULL;
-	DWORD dwNativeArch                       = PROCESS_ARCH_UNKNOWN;
-	SYSTEM_INFO SystemInfo                   = {0};
+	// default to 'x86' as if kernel32!GetNativeSystemInfo is not present then we are on an old x86 system.
+	GETNATIVESYSTEMINFO pGetNativeSystemInfo = (GETNATIVESYSTEMINFO)GetProcAddress(
+		GetModuleHandleA("kernel32.dll" ), "GetNativeSystemInfo" );
+	if( !pGetNativeSystemInfo )
+		return PROCESS_ARCH_X86;
 
-	do{
-		// default to 'x86' as if kernel32!GetNativeSystemInfo is not present then we are on an old x86 system.
-		dwNativeArch = PROCESS_ARCH_X86;
-
-		hKernel = LoadLibraryA( "kernel32.dll" );
-		if( !hKernel )
-			break;
-
-		pGetNativeSystemInfo = (GETNATIVESYSTEMINFO)GetProcAddress( hKernel, "GetNativeSystemInfo" );
-		if( !pGetNativeSystemInfo )
-			break;
-				
-		pGetNativeSystemInfo( &SystemInfo );
-		switch( SystemInfo.wProcessorArchitecture )
-		{
-			case PROCESSOR_ARCHITECTURE_AMD64:
-				dwNativeArch = PROCESS_ARCH_X64;
-				break;
-			case PROCESSOR_ARCHITECTURE_IA64:
-				dwNativeArch = PROCESS_ARCH_IA64;
-				break;
-			case PROCESSOR_ARCHITECTURE_INTEL:
-				dwNativeArch = PROCESS_ARCH_X86;
-				break;
-			default:
-				dwNativeArch = PROCESS_ARCH_UNKNOWN;
-				break;
-		}
-
-	} while( 0 );
-
-	if( hKernel )
-		FreeLibrary( hKernel );
-
-	return dwNativeArch;
+	SYSTEM_INFO SystemInfo = {0};
+	pGetNativeSystemInfo( &SystemInfo );
+	switch( SystemInfo.wProcessorArchitecture ){
+		case PROCESSOR_ARCHITECTURE_AMD64:
+			return PROCESS_ARCH_X64;
+		case PROCESSOR_ARCHITECTURE_IA64:
+			return PROCESS_ARCH_IA64;
+		case PROCESSOR_ARCHITECTURE_INTEL:
+			return PROCESS_ARCH_X86;
+		default:
+			return PROCESS_ARCH_UNKNOWN;
+	}
 }
 
-
-/*
- * Get the architecture of the given process.
- */
+// Get the architecture of the given process.
 DWORD ps_getarch( HANDLE hProcess ){
-	DWORD result                   = PROCESS_ARCH_UNKNOWN;
-	static DWORD dwNativeArch      = PROCESS_ARCH_UNKNOWN;
-	HMODULE hKernel                 = NULL;
-	ISWOW64PROCESS pIsWow64Process = NULL;
-	BOOL bIsWow64                  = FALSE;
+	static DWORD dwNativeArch = PROCESS_ARCH_UNKNOWN;
 
-	do{
-		// grab the native systems architecture the first time we use this function...
-		if( dwNativeArch == PROCESS_ARCH_UNKNOWN )
-			dwNativeArch = ps_getnativearch();
+	// grab the native systems architecture the first time we use this function...
+	if( dwNativeArch == PROCESS_ARCH_UNKNOWN )
+		dwNativeArch = ps_getnativearch();
 
-		// first we default to 'x86' as if kernel32!IsWow64Process is not present then we are on an older x86 system.
-		result = PROCESS_ARCH_X86;
+	// first we default to 'x86' as if kernel32!IsWow64Process is not present then we are on an older x86 system.
+	ISWOW64PROCESS pIsWow64Process = (ISWOW64PROCESS)GetProcAddress(
+		GetModuleHandleA("kernel32.dll"), "IsWow64Process" );
+	if( !pIsWow64Process )
+		return PROCESS_ARCH_X86;
+	
+	// now we must default to an unknown architecture as the process may be either x86/x64 and we may not have the rights to open it
+	BOOL bIsWow64 = FALSE;
+	if( !pIsWow64Process( hProcess, &bIsWow64 ) )
+		return PROCESS_ARCH_UNKNOWN;
 
-		hKernel = LoadLibraryA( "kernel32.dll" );
-		if( !hKernel )
-			break;
-
-		pIsWow64Process = (ISWOW64PROCESS)GetProcAddress( hKernel, "IsWow64Process" );
-		if( !pIsWow64Process )
-			break;
-		
-		// now we must default to an unknown architecture as the process may be either x86/x64 and we may not have the rights to open it
-		result = PROCESS_ARCH_UNKNOWN;
-
-		if( !pIsWow64Process( hProcess, &bIsWow64 ) )
-			break;
-
-		if( bIsWow64 )
-			result = PROCESS_ARCH_X86;
-		else
-			result = dwNativeArch;
-
-	} while( 0 );
-
-	if( hKernel )
-		FreeLibrary( hKernel );
-
-	return result;
+	if( bIsWow64 )
+		return PROCESS_ARCH_X86;
+	return dwNativeArch;
 }
 
 // Prepares shellcode for x86 and x64
@@ -575,8 +496,8 @@ BOOL injectPrep(){
 	lstrcatW(dll64Path,L"apihook64.dll");
 
 	//Get 32 bit ldrloadlibrary
-	DWORD x86strByteLen = lstrlenW(dll32Path) * sizeof(WCHAR);
-	DWORD x86scodeLen = sizeof(ldr_load_library_x86) - 1;
+	USHORT x86strByteLen = (USHORT)lstrlenW(dll32Path) * sizeof(WCHAR);
+	USHORT x86scodeLen = sizeof(ldr_load_library_x86) - 1;
 	loadDllx86CodeSize = x86scodeLen + 8 + x86strByteLen; //8 is sizeof(UNICODE_STRING) on 32 bit
 	loadDllx86Code = (PBYTE)HeapAlloc(rwHeap, 0, loadDllx86CodeSize);
 	if(loadDllx86Code == NULL)
@@ -592,8 +513,8 @@ BOOL injectPrep(){
 	memcpy(loadDllx86Code + x86scodeLen + 8, dll32Path, x86strByteLen);
 
 	//Get 64 bit ldrloadlibrary
-	DWORD x64strByteLen = lstrlenW(dll64Path) * sizeof(WCHAR);
-	DWORD x64scodeLen = sizeof(ldr_load_library_x64) - 1;
+	USHORT x64strByteLen = (USHORT)lstrlenW(dll64Path) * sizeof(WCHAR);
+	USHORT x64scodeLen = sizeof(ldr_load_library_x64) - 1;
 	loadDllx64CodeSize = x64scodeLen + 8 + x64strByteLen;
 	loadDllx64Code = (PBYTE)HeapAlloc(rwHeap, 0, loadDllx64CodeSize);
 	if(loadDllx64Code == NULL)
@@ -616,11 +537,11 @@ DWORD dll_inject_load( HANDLE hProcess ){
 	DWORD dwDllLength  = 0;
 
 	__try{
-	do{
 		dwPidArch = ps_getarch( hProcess );
-		if(!injectPrepped)
-			if(injectPrep() == FALSE)
-				return dwResult;
+		if(!injectPrepped && injectPrep() == FALSE){
+			reportError(L"Could not prep inject code");
+			return dwResult;
+		}
 
 		if( dwPidArch == PROCESS_ARCH_X86 ){
 			lpDllBuffer = loadDllx86Code;
@@ -629,11 +550,10 @@ DWORD dll_inject_load( HANDLE hProcess ){
 			lpDllBuffer = loadDllx64Code;
 			dwDllLength = loadDllx64CodeSize;
 		}else{
-			break; //BREAK_WITH_ERROR( "[PS] ps_inject_dll. Unable to determine target pid arhitecture", ERROR_INVALID_DATA ); 
+			reportError(L"Could not determine proc arch");
+			return dwResult;
 		}
 		dwResult = inject_dll( hProcess, dwPidArch, lpDllBuffer, dwDllLength );
-
-	} while( 0 );
 	}__except(exceptionFilter(GetExceptionInformation())){ //On exception - don't take action.
 	}
 	return dwResult;
