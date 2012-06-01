@@ -31,8 +31,8 @@ inline void setupAlertsDisabled(){
 #define MAX_ARGS 64 // should be enough for anybody - 
 //note this simply ignores arguments past MAX_ARGS not crashes or overflows
 
-#define NO_PROC_MATCH (slre*)-2
-#define PROC_MATCH (slre*)-1
+#define NO_PROC_MATCH (wslre*)-2
+#define PROC_MATCH (wslre*)-1
 
 #ifdef _M_X64
 #pragma pack(push,8)

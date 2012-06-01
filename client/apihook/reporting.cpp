@@ -147,10 +147,6 @@ DWORD WINAPI HTTPthread(AlertQueueNode* argnode){
 	hRequest = NULL,
 	hSession = mWinHttpOpen(L"Ambush IPS Client", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
 			WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
-	//Get reporting server
-	size_t unused;
-	WCHAR server[257];
-	mbstowcs_s(&unused, server, apiConf->reportServer, apiConf->reportServerLen);
 
 	//Get start time & queue head
 	AlertQueueNode* lastnode = argnode;
@@ -196,7 +192,7 @@ DWORD WINAPI HTTPthread(AlertQueueNode* argnode){
 
 		// Connect to the HTTP server.
 		if (hSession)
-			hConnect = mWinHttpConnect( hSession, server, SERVER_PORT, 0);//INTERNET_DEFAULT_HTTP_PORT
+			hConnect = mWinHttpConnect( hSession, apiConf->reportServer, SERVER_PORT, 0);//INTERNET_DEFAULT_HTTP_PORT
 		// Create an HTTP Request handle.
 		if (hConnect)
 			hRequest = mWinHttpOpenRequest( hConnect, L"POST", L"/alerts", 

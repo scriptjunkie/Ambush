@@ -96,9 +96,10 @@ class Action < ActiveRecord::Base
 	# turns a regex list from display format (multiline) to a lowercase regex
 	# also null pads to 4 byte alignment
 	def splitregex(str)
-		return "\x00\x00\x00\x00" if str == nil or str.chomp == ''
+		return "\x00\x00\x00\x00".encode('binary') if str == nil or str.chomp == ''
 		newstr = '(' + str.chomp.gsub(/\r\n/,'|').gsub(/\n/,'|') + ')'
-		newstr.downcase + ("\x00" * (4 - (newstr.length % 4)))
+		newstr = newstr.downcase.encode("UTF-16LE").force_encoding('binary')
+		newstr = newstr + ("\x00" * (4 - (newstr.length % 4)))
 	end
 
 	def compiled

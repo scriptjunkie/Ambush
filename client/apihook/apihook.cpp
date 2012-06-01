@@ -25,7 +25,8 @@ NCodeHook<ArchitectureIA32> *hooker;
 #endif
 
 HMODULE myDllHandle; //my DLL base
-map<void*, slre*> compiledSignatures; //for regex signatures
+map<void*, wslre*> compiledSignatures; //for regex signatures
+PWCHAR procBlacklist; //global process blacklist
 char* reportPipe;
 
 //Stores a TLS slot # for our boolean to determine whether to enable alerts
@@ -84,7 +85,7 @@ template<typename T, typename C>
 void ensureSlreCompiled(C* arg, int (*compile)(T*,const C*)){
 	if(compiledSignatures.count(arg) == 0){
 		T* regex = (T*)HeapAlloc(rwHeap, HEAP_ZERO_MEMORY, sizeof(T));
-		compiledSignatures[arg] = (slre*)regex;
+		compiledSignatures[arg] = (wslre*)regex;
 		if(regex != NULL)
 			compile(regex, arg);
 	}
@@ -125,7 +126,7 @@ inline bool argumentsMatch(HOOKAPI_ACTION_CONF* action, void** calledArgs){
 				if(calledArg == NULL)
 					return stringArg->value == 0; //Only empty strings match null
 				ensureSlreCompiled<slre,char>(&stringArg->value, slre_compile);
-				if(slre_match(compiledSignatures[&stringArg->value], (char*)calledArg, lstrlenA((char*)calledArg), NULL) == 0)
+				if(slre_match((slre*)compiledSignatures[&stringArg->value], (char*)calledArg, lstrlenA((char*)calledArg), NULL) == 0)
 					return false;
 				break;
 			}
@@ -135,7 +136,7 @@ inline bool argumentsMatch(HOOKAPI_ACTION_CONF* action, void** calledArgs){
 				if(calledArg == NULL)
 					return stringArg->value == 0; //Only empty strings match null
 				ensureSlreCompiled<wslre,wchar_t>(&stringArg->value, wslre_compile);
-				if(wslre_match((wslre*)compiledSignatures[&stringArg->value], (wchar_t*)calledArg, lstrlenW((wchar_t*)calledArg), NULL) == 0)
+				if(wslre_match(compiledSignatures[&stringArg->value], (wchar_t*)calledArg, lstrlenW((wchar_t*)calledArg), NULL) == 0)
 					return false;
 				break;
 			}
@@ -178,7 +179,7 @@ inline bool argumentsMatch(HOOKAPI_ACTION_CONF* action, void** calledArgs){
 				if(blobArg->argument != -1)
 					size = (size_t)calledArgs[blobArg->argument];
 				if(size < INT_MAX && // we're not even going to try
-					slre_match(compiledSignatures[&blobArg->value], (char*)calledArg, (int)size, NULL) != 1)
+					slre_match((slre*)compiledSignatures[&blobArg->value], (char*)calledArg, (int)size, NULL) != 1)
 						return false;
 			}
 		}
@@ -188,24 +189,24 @@ inline bool argumentsMatch(HOOKAPI_ACTION_CONF* action, void** calledArgs){
 }
 
 // Core logic of process and module black and white list comparisons
-inline bool matchesModule(PCHAR blacklist, PCHAR whitelist, HMODULE mod){
-	char fname[MAX_PATH];
-	DWORD len = GetModuleFileNameA(mod, fname, MAX_PATH);
+inline bool matchesModule(PWCHAR blacklist, PWCHAR whitelist, HMODULE mod){
+	wchar_t fname[MAX_PATH];
+	DWORD len = GetModuleFileNameW(mod, fname, sizeof(fname));
 	if(len == 0)
 		return true; // Not a module?! Default to matching.
 	for (DWORD i = 0; i < len; i++)
-		fname[i] = (char)tolower(fname[ i ]); // lower-case it!
-	ensureSlreCompiled<slre,char>(whitelist, slre_compile);
-	ensureSlreCompiled<slre,char>(blacklist, slre_compile);
-	return (whitelist[0] == '\0' || slre_match(compiledSignatures[whitelist], fname, len, NULL) == 1)
-		&& (blacklist[0] == '\0' || slre_match(compiledSignatures[blacklist], fname, len, NULL) == 0);
+		fname[i] = (wchar_t)tolower(fname[ i ]); // lower-case it!
+	ensureSlreCompiled<wslre,wchar_t>(whitelist, wslre_compile);
+	ensureSlreCompiled<wslre,wchar_t>(blacklist, wslre_compile);
+	return (whitelist[0] == '\0' || wslre_match(compiledSignatures[whitelist], fname, len, NULL) == 1)
+		&& (blacklist[0] == '\0' || wslre_match(compiledSignatures[blacklist], fname, len, NULL) == 0);
 }
 
 //Does the filename of the module including addr match the white/black lists?
 inline bool moduleApplies(HOOKAPI_ACTION_CONF* action, PVOID addr){
-	char* black = actionConfModBlack(action);
-	char* white = actionConfModWhite(action);
-	if(black[0] == '\0' && white[0] == '\0') // There is no condition, it matches
+	PWCHAR black = actionConfModBlack(action);
+	PWCHAR white = actionConfModWhite(action);
+	if((black[0] | white[0]) == '\0') // There is no condition, it matches
 		return true;
 	MEMORY_BASIC_INFORMATION meminfo;
 	VirtualQuery(addr, &meminfo, sizeof(meminfo)); //Get module base from address
@@ -214,9 +215,9 @@ inline bool moduleApplies(HOOKAPI_ACTION_CONF* action, PVOID addr){
 
 //Does this action apply to this process?
 inline bool matchesProcess(HOOKAPI_ACTION_CONF* action){
-	char* black = actionConfExeBlack(action);
-	char* white = actionConfExeWhite(action);
-	if(black[0] == '\0' && white[0] == '\0') // There is no condition, it matches
+	wchar_t* black = actionConfExeBlack(action);
+	wchar_t* white = actionConfExeWhite(action);
+	if((black[0] | white[0]) == '\0') // There is no condition, it matches
 		return true;
 	if(compiledSignatures.count(action) == 0){ // We haven't seen it before. Do the check.
 		if(matchesModule(black, white, NULL))
@@ -306,7 +307,13 @@ DWORD WINAPI CreateProcessInternalWHook(PVOID token, LPCWSTR lpApplicationName, 
 		bInheritHandles, dwCreationFlags | CREATE_SUSPENDED, lpEnvironment, lpCurrentDirectory, lpStartupInfo, lpProcessInformation, unknown);
 
 	// If something weird or broken is happening, don't continue
-	if(retval == 0 || (dwCreationFlags  & (CREATE_PROTECTED_PROCESS | DEBUG_ONLY_THIS_PROCESS | DEBUG_PROCESS)) != 0 || token != 0 || unknown != 0){
+	size_t applen = (size_t)-1;
+	if(lpApplicationName != 0)
+		applen = lstrlenW(lpApplicationName);
+	if(retval == 0 || (dwCreationFlags  & (CREATE_PROTECTED_PROCESS | DEBUG_ONLY_THIS_PROCESS | DEBUG_PROCESS)) != 0 || token != 0 || unknown != 0
+			//Or the process is blacklisted
+			|| (applen != (size_t)-1 && applen < INT_MAX && procBlacklist[0] != '\0' 
+				&& wslre_match(compiledSignatures[procBlacklist], lpApplicationName, (int)applen, NULL))){
 		if(!alreadySuspended)
 			ResumeThread(lpProcessInformation->hThread);
 		//Log error and reason
@@ -395,8 +402,8 @@ bool prepHookApi(){
 	}
 
 	//If there is a blacklist, and it excludes us, abort before we hook anything
-	PCHAR pbl = apiConfProcBlacklist(apiConf);
-	if(pbl[0] != 0 && !matchesModule(pbl, "", NULL)){
+	procBlacklist = apiConfProcBlacklist(apiConf);
+	if(procBlacklist[0] != 0 && !matchesModule(procBlacklist, L"", NULL)){
 		HeapFree(rwHeap,0,apiConf);
 		return false;
 	}
@@ -492,8 +499,10 @@ bool hookDllApi(HMODULE dllHandle){
 		bool valid = false;
 		HOOKAPI_ACTION_CONF* action = functionConfActions(function);
 		for(unsigned int i = 0; i < function->numActions; i++){
-			if(matchesProcess(action))
+			if(matchesProcess(action)){
 				valid = true;
+				break;
+			}
 			action = nextActionConf(action);
 		}
 		if(valid)

@@ -3,7 +3,7 @@ class SignatureSet < ActiveRecord::Base
 	has_many :actions, :dependent => :destroy
 	# if the signature_version does not match what the client agents were built for, it 
 	# will trigger an update
-	@@signature_version = 1.0
+	@@signature_version = 1.01
 
 	def cachepath
 		File.join(File.dirname(__FILE__), '..', 'assets', 'sigs', self.id.to_s + '_compiled')
@@ -70,9 +70,9 @@ class SignatureSet < ActiveRecord::Base
 		out = [@@signature_version, self.serial].pack('eV')
 		# set ourselves as default report IP
 		self.report = getDefaultIp if self.report == nil
-		mname = self.report.to_s
+		mname = self.report.to_s.encode("UTF-16LE").force_encoding('binary')
 		mname = mname + ("\x00" * (4 - (mname.length % 4)) )
-		blist = self.procblacklist.to_s
+		blist = self.procblacklist.to_s.encode("UTF-16LE").force_encoding('binary')
 		blist = blist + ("\x00" * (4 - (blist.length % 4)) )
 
 		dlls = AvailableDll.find(:all,:joins => "INNER JOIN available_functions ON available_functions.available_dll_id = available_dlls.id INNER JOIN actions ON available_functions.id = actions.available_function_id",:select => 'DISTINCT(available_dlls.name),available_dlls.*')

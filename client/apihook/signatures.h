@@ -1,6 +1,6 @@
 #pragma once
 
-#define HOOKAPI_SIG_VERSION 1.0f
+#define HOOKAPI_SIG_VERSION 1.01f
 
 enum ArgType { DONTCARE, DWORD_HOOK, DWORDRANGE, CSTRING, WCSTRING, MEM, BITMASK, BLOB_HOOK, DWORD_NEQ };
 
@@ -66,25 +66,25 @@ typedef struct sHOOKAPI_ACTION_CONF
     unsigned int   modWhiteLen;
     unsigned int   retAddrMemType;
     unsigned int   retAddrMemMode;
-	char exeBlack[4];
+	wchar_t exeBlack[4];
 	//HOOKAPI_CONDITION_CONF conditions[1];
 } HOOKAPI_ACTION_CONF, *PHOOKAPI_ACTION_CONF;
 
 //Get Functions
-inline PCHAR actionConfExeBlack(PHOOKAPI_ACTION_CONF conf){
+inline PWCHAR actionConfExeBlack(PHOOKAPI_ACTION_CONF conf){
 	return conf->exeBlack;
 }
-inline PCHAR actionConfExeWhite(PHOOKAPI_ACTION_CONF conf){
-	return (PCHAR) (actionConfExeBlack(conf) + conf->exeBlackLen);
+inline PWCHAR actionConfExeWhite(PHOOKAPI_ACTION_CONF conf){
+	return (PWCHAR) (((PBYTE)actionConfExeBlack(conf)) + conf->exeBlackLen);
 }
-inline PCHAR actionConfModBlack(PHOOKAPI_ACTION_CONF conf){
-	return (PCHAR) (actionConfExeWhite(conf) + conf->exeWhiteLen);
+inline PWCHAR actionConfModBlack(PHOOKAPI_ACTION_CONF conf){
+	return (PWCHAR) (((PBYTE)actionConfExeWhite(conf)) + conf->exeWhiteLen);
 }
-inline PCHAR actionConfModWhite(PHOOKAPI_ACTION_CONF conf){
-	return (PCHAR) (actionConfModBlack(conf) + conf->modBlackLen);
+inline PWCHAR actionConfModWhite(PHOOKAPI_ACTION_CONF conf){
+	return (PWCHAR) (((PBYTE)actionConfModBlack(conf)) + conf->modBlackLen);
 }
 inline PHOOKAPI_ARG_CONF actionConfArgs(PHOOKAPI_ACTION_CONF conf){
-	return (PHOOKAPI_ARG_CONF) (actionConfModWhite(conf) + conf->modWhiteLen);
+	return (PHOOKAPI_ARG_CONF) (((PBYTE)actionConfModWhite(conf)) + conf->modWhiteLen);
 }
 inline PHOOKAPI_ACTION_CONF nextActionConf(PHOOKAPI_ACTION_CONF conf){
 	return (PHOOKAPI_ACTION_CONF) ((PBYTE)conf + conf->size);
@@ -144,19 +144,19 @@ typedef struct sHOOKAPI_CONF
     unsigned int   numdlls;
 	unsigned int   reportServerLen;
 	unsigned int   procBlacklistLen;
-	char           reportServer[1];
+	wchar_t        reportServer[1];
 	//HOOKAPI_DLL_CONF dlls[1];
 } HOOKAPI_CONF, *PHOOKAPI_CONF;
 
 //Get DLLs
 inline PHOOKAPI_DLL_CONF apiConfDlls(PHOOKAPI_CONF conf){
-	return (PHOOKAPI_DLL_CONF) ((PBYTE)conf + sizeof(unsigned int) * 5 + conf->reportServerLen
+	return (PHOOKAPI_DLL_CONF) ((PBYTE)conf + sizeof(unsigned int) * 4 + sizeof(float) + conf->reportServerLen
 		+ conf->procBlacklistLen);
 }
 
 //Get blacklist
-inline PCHAR apiConfProcBlacklist(PHOOKAPI_CONF conf){
-	return (PCHAR) ((PBYTE)conf + sizeof(unsigned int) * 5 + conf->reportServerLen);
+inline PWCHAR apiConfProcBlacklist(PHOOKAPI_CONF conf){
+	return (PWCHAR) ((PBYTE)conf + sizeof(unsigned int) * 4 + sizeof(float) + conf->reportServerLen);
 }
 
 #pragma pack(pop)
