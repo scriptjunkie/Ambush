@@ -289,7 +289,9 @@ void* hook0 (void* arg0){
 	//Check PRE actions before call and if not blocked...
 	if(!actionsBlock(conf, calledArgs, PRE, &retval)){
 		retval = callApi(&arg0, (void*)conf->numArgs, hookArgs[1]); //call the real function
+		DWORD originalLastError = GetLastError();
 		actionsBlock(conf, calledArgs, POST, &retval); //and check POST actions afterward
+		SetLastError(originalLastError);
 	}
 
 	setEax(retval);  //And return the result
@@ -305,6 +307,7 @@ DWORD WINAPI CreateProcessInternalWHook(PVOID token, LPCWSTR lpApplicationName, 
 	bool alreadySuspended = (dwCreationFlags & CREATE_SUSPENDED) != 0;
 	DWORD retval = CreateProcessInternalWReal(token, lpApplicationName, lpCommandLine, lpProcessAttributes, lpThreadAttributes, 
 		bInheritHandles, dwCreationFlags | CREATE_SUSPENDED, lpEnvironment, lpCurrentDirectory, lpStartupInfo, lpProcessInformation, unknown);
+	DWORD originalLastError = GetLastError();
 
 	// If something weird or broken is happening, don't continue
 	size_t applen = (size_t)-1;
@@ -323,6 +326,7 @@ DWORD WINAPI CreateProcessInternalWHook(PVOID token, LPCWSTR lpApplicationName, 
 				L"CreateProcessInternalWHook abort - retval %d creation flags %p token %p a2 %p appname %s cmdline %s",
 				retval, dwCreationFlags, token, unknown, lpApplicationName, lpCommandLine);
 		reportError(errorinfo);
+		SetLastError(originalLastError);
 		return retval;
 	}
 
@@ -331,6 +335,7 @@ DWORD WINAPI CreateProcessInternalWHook(PVOID token, LPCWSTR lpApplicationName, 
 	if(!alreadySuspended)
 		ResumeThread(lpProcessInformation->hThread);
 	enableAlerts();
+	SetLastError(originalLastError);
 	return retval;
 }
 
@@ -339,8 +344,10 @@ NTSTATUS NTAPI LdrLoadDllHook(PWCHAR PathToFile, PVOID Flags, PVOID ModuleFileNa
 	NTSTATUS result = 0;
 	__try{
 		result = realLdrLoadDll(PathToFile, Flags, ModuleFileName, ModuleHandle);
+		DWORD originalLastError = GetLastError();
 		if(ModuleHandle != NULL && *ModuleHandle != NULL)
 			hookDllApi((HMODULE)*ModuleHandle);
+		SetLastError(originalLastError);
 	}__except(exceptionFilter(GetExceptionInformation())){ //On exception - don't take action.
 	}
 	return result;
