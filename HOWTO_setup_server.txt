@@ -1,10 +1,67 @@
-# Ambush Server Setup
-# This is an example development setup with JRuby. 
+Ambush Server Setup
+
+############################
+The easy way with a rails VM
+############################
+
+If you do not have VMware, download and install the free player from http://www.vmware.com/products/player/
+
+Then download the bitnami rubystack appliance (the version with ruby 1.9 and rails 3): 
+http://bitnami.org/stack/rubystack#virtualMachine
+Start the VM and login
+
+Use these two commands to install Ambush: 
+wget http://www.ambuships.com/files/installbitnami.sh
+sudo bash installbitnami.sh
+
+Go to the webpage at http://your.vm.ip:3000/ enter admin credentials and log in. 
+You can then create a signature set and add signatures, and setup your clients.
+
+
+
+###################################
+The hard way with a manual VM setup
+###################################
+
+# copy Ambush to the system
+cd /opt/bitnami/projects
+rm -rf *
+git clone https://github.com/scriptjunkie/Ambush.git .
+cd server
+chmod 777 app/assets/sigs
+chmod 777 public
+mkdir tmp
+chmod 777 tmp/
+# setup your database information in /opt/bitnami/projects/server/config/database.yml
+# such as changing 'host: localhost' to 'socket: /opt/bitnami/mysql/tmp/mysql.sock'
+
+# get dependencies
+RAILS_ENV=production
+export RAILS_ENV
+bundle install
+
+#setup the database
+rake db:setup
+#restart apache
+/opt/bitnami/apache2/scripts/ctl.sh stop
+/opt/bitnami/apache2/scripts/ctl.sh start
+
+# setup autoupdate
+cd /tmp
+echo $(( $RANDOM % 60 )) $(( $RANDOM % 4 )) '* * * cd /opt/bitnami/projects/ && git pull origin master' > schedtemp
+crontab -u root schedtemp
+
+
+
+######################################################
+The hard way with a local development setup with JRuby
+######################################################
+
 # Other configurations with ruby 1.9 should also be possible.
 
 #0. Ensure OpenSSL is installed and in your path. 
-# If not, download it from openssl.org or your distro.
 openssl -h
+# If not, download it from openssl.org or your distro.
 
 #1. Download and extract JRuby
 wget http://jruby.org.s3.amazonaws.com/downloads/1.6.5.1/jruby-bin-1.6.5.1.tar.gz
@@ -34,40 +91,3 @@ cd ambush/server
 xdg-open http://localhost:3000/
 
 #6. Follow instructions to enter a user/pass for the admin
-
-######### setup for rails vm:
-
-download http://bitnami.org/files/stacks/rubystack/3.2.1-1/bitnami-rubystack-3.2.1-1-opensuse-11.3.zip
-Start, change password, and ensure your ssh keys are in
-
-#now, either simply type these commands: 
-sudo bash 
-wget http://www.scriptjunkie.us/files/installbitnami.sh
-sh installbitnami.sh
-
-#
-# OR manually do everything
-#
-
-cd /opt/bitnami/projects
-# git checkout ambush or copy over
-# either way the "server" folder should be dropped into /opt/bitnami/projects/
-chown -R daemon server/
-chgrp -R daemon server/
-rm server/Gemfile.lock
-cd server
-bundle install
-#remove or comment out the DocumentRoot directive and the entire <Directory /opt/bitnami/apache2/htdocs> section in /opt/bitnami/apache2/conf/httpd.conf and add the following lines to the end:
-DocumentRoot /opt/bitnami/projects/server/public
-RailsBaseURI /
-<Directory /opt/bitnami/projects/server/public>
-	Allow from all
-</Directory>
-#change 'host: localhost' to 'socket: /opt/bitnami/mysql/tmp/mysql.sock' in config/database.yml
-
-/opt/bitnami/apache2/scripts/ctl.sh stop
-/opt/bitnami/apache2/scripts/ctl.sh start
-RAILS_ENV=production
-export RAILS_ENV
-rake db:setup
-#it will ask you for your mysql root password; it is bitnami, then you will wait as it seeds the DB.

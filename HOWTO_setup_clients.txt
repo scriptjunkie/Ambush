@@ -1,0 +1,26 @@
+Ambush Clients Setup
+
+Before you set up clients, you must set up a server. See the server setup HOWTO. Then you must configure each client by
+1. Installing Ambush with the installer.msi file, and
+2. Configuring the client which signature set to use and which server to pull it from
+
+####################
+The group policy way
+####################
+
+Ambush was designed to deploy to a network of clients. 
+
+To do that, log into the Ambush server, click on the Signatures link at the top to go to the signatures page, and click on the signature set you want to assign to clients. Click on the details link in the upper-right-hand corner of the page and click the link to download the ADM file. You can load this administrative template (.adm) file into Group Policy to assign to clients.
+
+Download the MSI installer from http://your.vm.ip:3000/installer.msi to push out to your systems.
+
+Ideally you should push out the server configuration before the installer to avoid delays in installation and signature propagation, although this is not necessary.
+
+
+##################
+The individual way
+##################
+
+Download the MSI installer from http://your.vm.ip:3000/installer.msi and install on the system. Now you must configure a server and signature set to pull signatures from. To do that, run the following command with adminstrative privileges:
+"%PROGRAMFILES%\Scriptjunkie Software\Ambush\config.exe" server 2.3.4.5 1
+where 2.3.4.5 is the IP address of your server and 1 is the number of the signature set to use.
