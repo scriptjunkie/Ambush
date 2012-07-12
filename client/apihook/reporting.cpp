@@ -358,7 +358,7 @@ BOOL checkLogging(){
 		GetProcAddress(LoadLibraryA("Advapi32.dll"), "ConvertStringSecurityDescriptorToSecurityDescriptorA");
 	if(CSSDTSDA == NULL)
 		return FALSE;
-	CSSDTSDA("D:(D;;FA;;;NU)(A;;0x12019b;;;WD)(A;;0x12019f;;;CO)", SDDL_REVISION_1, &newSD, &newSDsize);
+	CSSDTSDA("S:(ML;;NW;;;LW)D:(D;;FA;;;NU)(A;;0x12019b;;;WD)(A;;0x12019f;;;CO)", SDDL_REVISION_1, &newSD, &newSDsize);
 	SECURITY_ATTRIBUTES sa;
 	sa.nLength = sizeof(sa);
 	sa.lpSecurityDescriptor = newSD;

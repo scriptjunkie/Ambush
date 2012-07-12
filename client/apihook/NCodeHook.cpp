@@ -105,8 +105,9 @@ opcodeAddr NCodeHook<ArchT>::getPatchSite(opcodeAddr codePtr, // where to start
 			nextBlock = codePtr + 2; //Resume after our patch
 			*patchSize = 0; 
 			return codePtr - 5;
-		//Refuse if the hook would run off end of function, and squash other code
-		}else if(ud_obj.pc - (uint64_t)codePtr < patchMinSize && ud_obj.mnemonic == UD_Iret){
+		//Refuse if interrupt or the hook would run off end of function, and squash other code
+		}else if(ud_obj.mnemonic == UD_Iint ||
+				(ud_obj.pc - (uint64_t)codePtr < patchMinSize && ud_obj.mnemonic == UD_Iret)){
 			return (opcodeAddr)-1;
 		}
 	}
@@ -164,6 +165,7 @@ bool NCodeHook<ArchT>::createHook(U originalFunc, U hookFunc, U* trampAddr){
 	}else{ // copy instructions to trampoline
 		memcpy((void*)trampolineAddr, (void*)originalFunc, patchSize);
 		architecture_.writeJump(trampolineAddr + patchSize, nextBlock);
+		FlushInstructionCache(GetCurrentProcess(), (LPCVOID)trampolineAddr, MaxTotalTrampolineSize);
 	}
 
 	// relink branch by adding another jmp to the end of the trampoline used only by the branch:
@@ -187,7 +189,6 @@ bool NCodeHook<ArchT>::createHook(U originalFunc, U hookFunc, U* trampAddr){
 	DWORD dummy;
 	VirtualProtect((LPVOID)originalFunc, ArchT::MaxTrampolineSize, oldProtect, &dummy);
 
-	FlushInstructionCache(GetCurrentProcess(), (LPCVOID)trampolineAddr, MaxTotalTrampolineSize);
 	FlushInstructionCache(GetCurrentProcess(), (LPCVOID)originalFunc, useAbsJump ? ArchT::AbsJumpPatchSize : ArchT::NearJumpPatchSize);
 
 	return true;
