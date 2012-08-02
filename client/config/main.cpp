@@ -6,6 +6,7 @@
 #include <Strsafe.h>
 #include "../apihook/signatures.h"
 using namespace std;
+#define SERVER_PORT 3000
 #define CONFIG_SAVE_FILE "save"
 #define SIG_FILE "sig.dat"
 #define TEMP_SIG_FILE "sigtemp.dat"
@@ -178,7 +179,7 @@ void clearSchedTask(){
 	lstrcpyW(cmdline, L"schtasks /delete /tn AmbushSigUpdate /f");
 	// set directory
 	WCHAR dirbuf[2000];
-	GetSystemDirectoryW(dirbuf,1999);
+	GetSystemDirectoryW(dirbuf,sizeof(dirbuf)-1);
 	SetCurrentDirectoryW(dirbuf);
 	// run command
 	if (CreateProcessW(NULL, cmdline, 0, 0, FALSE, 0, 0, 0, &siStartupInfo, &piProcessInfo) == FALSE)
@@ -217,7 +218,7 @@ void doUpdate(){
 
 	// Connect to the HTTP server.
 	if (hSession){
-		hConnect = WinHttpConnect( hSession, server, 3000, 0);//INTERNET_DEFAULT_HTTP_PORT
+		hConnect = WinHttpConnect( hSession, server, SERVER_PORT, 0);
 	}else {
 		printf( "Error - WinHttpOpen %u .\n", GetLastError());
 		return;
