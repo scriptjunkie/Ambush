@@ -151,7 +151,7 @@
         {
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_12F487CB6917449E8725FFEED028FE01"
             {
-            "SourcePath" = "8:Y:\\x64\\Release\\apihook64.dll"
+            "SourcePath" = "8:..\\x64\\Release\\apihook64.dll"
             "TargetName" = "8:apihook64.dll"
             "Tag" = "8:"
             "Folder" = "8:_4B5D19F476F045AE866378E223BD7F23"
@@ -231,7 +231,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_6672BC4F8E9A45EA8BAB741BAAEE2270"
             {
-            "SourcePath" = "8:Y:\\Release\\apihook.dll"
+            "SourcePath" = "8:..\\Release\\apihook.dll"
             "TargetName" = "8:apihook.dll"
             "Tag" = "8:"
             "Folder" = "8:_4B5D19F476F045AE866378E223BD7F23"
@@ -903,7 +903,7 @@
         {
             "{5259A561-127C-4D43-A0A1-72F10C7B3BF8}:_E8F0EC009C7643559CD198B276B20BCB"
             {
-            "SourcePath" = "8:y:\\Release\\config.exe"
+            "SourcePath" = "8:..\\Release\\config.exe"
             "TargetName" = "8:"
             "Tag" = "8:"
             "Folder" = "8:_4B5D19F476F045AE866378E223BD7F23"
