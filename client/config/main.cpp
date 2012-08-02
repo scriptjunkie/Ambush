@@ -22,7 +22,7 @@ char appinitDlls64[33000];
 char shortDllPath32[MAX_PATH];
 char shortDllPath64[MAX_PATH];
 HKEY winkey32 = 0, winkey64 = 0;
-DWORD length = 4, length32 = 0, length64 = 0;
+DWORD length = 4, length32 = sizeof(appinitDlls32), length64 = sizeof(appinitDlls64);
 BOOL is64bit = TRUE;
 //Exits with error message
 void die(const char * message){
