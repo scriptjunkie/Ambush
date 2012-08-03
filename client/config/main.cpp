@@ -6,6 +6,7 @@
 #include <Strsafe.h>
 #include "../apihook/signatures.h"
 using namespace std;
+#define SERVER_PORT 3000
 #define CONFIG_SAVE_FILE "save"
 #define SIG_FILE "sig.dat"
 #define TEMP_SIG_FILE "sigtemp.dat"
@@ -21,7 +22,7 @@ char appinitDlls64[33000];
 char shortDllPath32[MAX_PATH];
 char shortDllPath64[MAX_PATH];
 HKEY winkey32 = 0, winkey64 = 0;
-DWORD length = 4, length32 = 0, length64 = 0;
+DWORD length = 4, length32 = sizeof(appinitDlls32), length64 = sizeof(appinitDlls64);
 BOOL is64bit = TRUE;
 //Exits with error message
 void die(const char * message){
@@ -178,7 +179,7 @@ void clearSchedTask(){
 	lstrcpyW(cmdline, L"schtasks /delete /tn AmbushSigUpdate /f");
 	// set directory
 	WCHAR dirbuf[2000];
-	GetSystemDirectoryW(dirbuf,1999);
+	GetSystemDirectoryW(dirbuf,sizeof(dirbuf)-1);
 	SetCurrentDirectoryW(dirbuf);
 	// run command
 	if (CreateProcessW(NULL, cmdline, 0, 0, FALSE, 0, 0, 0, &siStartupInfo, &piProcessInfo) == FALSE)
@@ -217,7 +218,7 @@ void doUpdate(){
 
 	// Connect to the HTTP server.
 	if (hSession){
-		hConnect = WinHttpConnect( hSession, server, 3000, 0);//INTERNET_DEFAULT_HTTP_PORT
+		hConnect = WinHttpConnect( hSession, server, SERVER_PORT, 0);
 	}else {
 		printf( "Error - WinHttpOpen %u .\n", GetLastError());
 		return;
