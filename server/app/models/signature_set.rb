@@ -68,10 +68,7 @@ class SignatureSet < ActiveRecord::Base
 		
 		self.serial = 1 if self.serial == nil
 		out = [@@signature_version, self.serial].pack('eV')
-		# set ourselves as default report IP
-		self.report = getDefaultIp if self.report == nil
-		mname = self.report.to_s.encode("UTF-16LE").force_encoding('binary')
-		mname = mname + ("\x00" * (4 - (mname.length % 4)) )
+		reserved = '' # not currently used
 		blist = self.procblacklist.to_s.encode("UTF-16LE").force_encoding('binary')
 		blist = blist + ("\x00" * (4 - (blist.length % 4)) )
 
@@ -86,7 +83,7 @@ class SignatureSet < ActiveRecord::Base
 			end
 		end
 
-		out << [numdlls, mname.length, blist.length].pack("V*") + mname + blist + temp
+		out << [numdlls, reserved.length, blist.length].pack("V*") + reserved + blist + temp
 		# version, serialNumber, numdlls, pipeNameLen, pipeName, dlls[]
 		fout = File.open(self.cachepath, 'wb')
 		fout.write out
@@ -138,14 +135,15 @@ class SignatureSet < ActiveRecord::Base
 	end
 
 	def simplified
-		{'report' => self.report, 'version' => self.version, 'actions' => self.actions.map{|a| a.simplified} }
+		{'version' => @@signature_version, 'actions' => self.actions.map{|a| a.simplified} }
 	end
 
 	def self.from_simplified(simple, setid)
+		# This is where we could do version checks with simple['version'] if the format changes
 		if setid
 			@signature_set = SignatureSet.find(setid)
 		else
-			@signature_set = SignatureSet.new(:report => simple['report'], :version => simple['version'])
+			@signature_set = SignatureSet.new()
 			@signature_set.save
 		end
 		simple['actions'].each do |act|

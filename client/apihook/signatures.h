@@ -142,21 +142,20 @@ typedef struct sHOOKAPI_CONF
     float          version;
     unsigned int   serial;
     unsigned int   numdlls;
-	unsigned int   reportServerLen;
+	unsigned int   reserved; // deprecated
 	unsigned int   procBlacklistLen;
-	wchar_t        reportServer[1];
 	//HOOKAPI_DLL_CONF dlls[1];
 } HOOKAPI_CONF, *PHOOKAPI_CONF;
 
 //Get DLLs
 inline PHOOKAPI_DLL_CONF apiConfDlls(PHOOKAPI_CONF conf){
-	return (PHOOKAPI_DLL_CONF) ((PBYTE)conf + sizeof(unsigned int) * 4 + sizeof(float) + conf->reportServerLen
+	return (PHOOKAPI_DLL_CONF) ((PBYTE)conf + sizeof(unsigned int) * 4 + sizeof(float) + conf->reserved
 		+ conf->procBlacklistLen);
 }
 
 //Get blacklist
 inline PWCHAR apiConfProcBlacklist(PHOOKAPI_CONF conf){
-	return (PWCHAR) ((PBYTE)conf + sizeof(unsigned int) * 4 + sizeof(float) + conf->reportServerLen);
+	return (PWCHAR) ((PBYTE)conf + sizeof(unsigned int) * 4 + sizeof(float) + conf->reserved);
 }
 
 #pragma pack(pop)

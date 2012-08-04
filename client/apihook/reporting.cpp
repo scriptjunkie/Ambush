@@ -191,8 +191,19 @@ DWORD WINAPI HTTPthread(AlertQueueNode* argnode){
 		lastAlert.QuadPart = currentTime.QuadPart;
 
 		// Connect to the HTTP server.
-		if (hSession)
-			hConnect = mWinHttpConnect( hSession, apiConf->reportServer, SERVER_PORT, 0);//INTERNET_DEFAULT_HTTP_PORT
+		HKEY settingsKey;
+		BYTE serverNamec[MAX_PATH];
+		DWORD length = sizeof(serverNamec);
+		size_t len_t;
+		WCHAR serverName[MAX_PATH];
+		if (hSession 
+				&& RegOpenKeyExA(HKEY_LOCAL_MACHINE, "SOFTWARE\\Scriptjunkie\\Ambush", 0, 
+					KEY_QUERY_VALUE|KEY_WOW64_64KEY, &settingsKey) == ERROR_SUCCESS
+				&& RegQueryValueExA(settingsKey, "SignatureServer", NULL, NULL, serverNamec, 
+					&length) == ERROR_SUCCESS
+				&& mbstowcs_s(&len_t, serverName, (PCHAR)serverNamec, length) == 0){
+			hConnect = mWinHttpConnect( hSession, serverName, SERVER_PORT, 0);//INTERNET_DEFAULT_HTTP_PORT
+		}
 		// Create an HTTP Request handle.
 		if (hConnect)
 			hRequest = mWinHttpOpenRequest( hConnect, L"POST", L"/alerts", 

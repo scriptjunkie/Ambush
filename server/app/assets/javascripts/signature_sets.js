@@ -278,8 +278,6 @@ function closeOverlay(name){
 }
 function newSigSet(){
 	$('#new').overlay({load:true, fixed: false}).load();
-	$('[name="signature_set[report]"]').attr('value', document.domain);
-	$('[name="signature_set[version]"]').attr('value', 1);
 }
 function submitNewSig(){
 	$.post('/signature_sets/', $('#newform').serialize() + "&authenticity_token=" + encodeURIComponent(AUTH_TOKEN),
