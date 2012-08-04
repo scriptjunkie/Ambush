@@ -4,6 +4,8 @@ Before you set up clients, you must set up a server. See the server setup HOWTO.
 1. Installing Ambush with the installer.msi file, and
 2. Configuring the client which signature set to use and which server to pull it from
 
+Compatibility: Ambush was written for Windows Vista, 7, or 8. You are at your own risk using it on any other OS. Actually, you are at your own risk using it on those too, but it's at least been tested on those.
+
 ####################
 The group policy way
 ####################
