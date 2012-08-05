@@ -333,9 +333,8 @@ int main(int argc, char** argv){
 		loadAppInit32 = 1;
 	if(RegQueryValueExA(winkey32,"RequireSignedAppInit_DLLs",NULL,NULL,(PBYTE)&requireSignedAppInit32,&length) != ERROR_SUCCESS)
 		requireSignedAppInit32 = 0;
-	length = sizeof(appinitDlls32);
 	if(RegQueryValueExA(winkey32,"AppInit_DLLs",NULL,NULL,(PBYTE)appinitDlls32,&length32) != ERROR_SUCCESS)
-		length = 1;//make it a 0 length string
+		length32 = 1;//make it a 0 length string
 
 	//Check if 64 bit
 	IsWow64ProcessFunc isWow = (IsWow64ProcessFunc)GetProcAddress(
@@ -351,7 +350,7 @@ int main(int argc, char** argv){
 		if(RegQueryValueExA(winkey64,"RequireSignedAppInit_DLLs",NULL,NULL,(PBYTE)&requireSignedAppInit64,&length) != ERROR_SUCCESS)
 			requireSignedAppInit64 = 0;
 		if(RegQueryValueExA(winkey64,"AppInit_DLLs",NULL,NULL,(PBYTE)appinitDlls64,&length64) != ERROR_SUCCESS)
-			length = 1;//make it a 0 length string
+			length64 = 1;//make it a 0 length string
 	}
 
 	//Change directory to binary directory
@@ -369,7 +368,8 @@ int main(int argc, char** argv){
 	dllPath32.append("apihook.dll");
 	dllPath64.append("apihook64.dll");
 	GetShortPathNameA(dllPath32.c_str(), shortDllPath32, sizeof(shortDllPath32));
-	GetShortPathNameA(dllPath64.c_str(), shortDllPath64, sizeof(shortDllPath64));
+	if(is64bit)
+		GetShortPathNameA(dllPath64.c_str(), shortDllPath64, sizeof(shortDllPath64));
 
 	if(command.compare("install") == 0 || command.compare("/Commit") == 0){ //INSTALL
 		doUpdate();
@@ -380,7 +380,8 @@ int main(int argc, char** argv){
 
 		//Edit AppInit_DLLs if necessary
 		addShortPath(appinitDlls32, sizeof(appinitDlls32), length32, shortDllPath32);
-		addShortPath(appinitDlls64, sizeof(appinitDlls64), length64, shortDllPath64);
+		if(is64bit)
+			addShortPath(appinitDlls64, sizeof(appinitDlls64), length64, shortDllPath64);
 
 		//Write to file
 		HANDLE outFile = CreateFileA(CONFIG_SAVE_FILE, GENERIC_READ|GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
