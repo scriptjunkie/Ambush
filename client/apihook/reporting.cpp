@@ -13,6 +13,7 @@ using namespace std;
 //Default 20s to conglomerate alerts
 #define ALERT_INTERVAL 20000
 #define SERVER_PORT 3000
+#define DEFAULT_MESSAGE_SIZE 1024
 
 // some winHTTP defines
 HINTERNET (WINAPI *mWinHttpOpen)(
@@ -269,9 +270,9 @@ BOOL runLocalServer(HANDLE servPipe){
 				return FALSE; //we can't store our messages!
 		}
 
-		message = (PHOOKAPI_MESSAGE)HeapAlloc(rwHeap, 0, 2000);
+		message = (PHOOKAPI_MESSAGE)HeapAlloc(rwHeap, HEAP_ZERO_MEMORY, DEFAULT_MESSAGE_SIZE);
 		if(message == NULL){ //This has got to work. so just wait until it does
-			Sleep(1000);
+			Sleep(100);
 			continue;
 		}
 		DisconnectNamedPipe(servPipe); //just in case of previous error
@@ -280,24 +281,21 @@ BOOL runLocalServer(HANDLE servPipe){
 			HeapFree(rwHeap, 0, message);
 			continue; //Error
 		}
-		DWORD numBytes;
-		if (!ReadFile( servPipe,  message,  2000, &numBytes, NULL) || numBytes < sizeof(HOOKAPI_MESSAGE)){
+		DWORD numBytes; //number of received bytes
+		if (!ReadFile( servPipe,  message, DEFAULT_MESSAGE_SIZE, &numBytes, NULL) 
+				|| numBytes < sizeof(HOOKAPI_MESSAGE)){
 			HeapFree(rwHeap, 0, message);
 			continue; //Error
 		}
 		if(numBytes < message->length){ //Go get more if we need it
-			PHOOKAPI_MESSAGE oldmessage = message;
-			message = (PHOOKAPI_MESSAGE)HeapAlloc(rwHeap, 0, message->length);
-			if(message == NULL){
-				HeapFree(rwHeap, 0, message);
+			message = (PHOOKAPI_MESSAGE)HeapReAlloc(rwHeap, HEAP_ZERO_MEMORY, message, message->length);
+			if(message == NULL)
 				continue; //no memory. sad face.
-			}
-			memcpy(message, oldmessage, numBytes);
-			HeapFree(rwHeap, 0, oldmessage);
-			if (!ReadFile(servPipe, ((PBYTE)message) + numBytes, message->length - numBytes, 
-				&numBytes, NULL) || numBytes == 0){
-					HeapFree(rwHeap, 0, message);
-					continue; //Error
+			DWORD toRead = message->length - numBytes; // still need to read this much
+			if (!ReadFile(servPipe, ((PBYTE)message) + numBytes, toRead, &numBytes, NULL) 
+					|| numBytes != toRead){
+				HeapFree(rwHeap, 0, message);
+				continue; //Error
 			}
 		}
 		// Save to file
