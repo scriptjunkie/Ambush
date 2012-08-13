@@ -1,17 +1,11 @@
 <% content_for :unwrapped do %>
 <%= javascript_include_tag 'sorttable.js' %>
-<div class="modal small" id="new">
-	<h2 id="modalTitle">Signature set - details</h2>
-	<h3>Info</h3>
+<div class="modal small" id="new" style="padding-bottom: 40px;">
+	<h2 id="modalTitle">New signature set</h2>
 	<form id="newform" onsubmit='return submitNewSig()'>
-		<table>
-			<tbody>
-				<tr><td><p class="dialog">Field</p></td><td><p class="dialog">Value</p></td></tr>
-				<tr><td><p class="dialog">Name</p></td><td><input id="signature_set_name" name="signature_set[name]" size="30" type="text" value="" title="The name of the signature set" /></td></tr>
-			</tbody>
-		</table>
-		<input type="submit" value="Submit"></input>
-		<input type="submit" value="Close" onclick="closeOverlay();return false;"></input>
+		<p class="dialog" style="margin: 10px 60px 10px 10px;">Name <input id="signature_set_name" name="signature_set[name]" size="30" type="text" value="" title="The name of the signature set" /></p>
+		<span class="right"><input type="submit" value="Close" onclick="closeOverlay();return false;"></input>
+		<input type="submit" value="Submit"></input></span>
 	</form>
 </div>
 <% end %>
