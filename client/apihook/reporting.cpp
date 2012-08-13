@@ -281,7 +281,7 @@ BOOL runLocalServer(HANDLE servPipe){
 			continue; //Error
 		}
 		DWORD numBytes;
-		if (!ReadFile( servPipe,  message,  2000, &numBytes, NULL) || numBytes == 0){
+		if (!ReadFile( servPipe,  message,  2000, &numBytes, NULL) || numBytes < sizeof(HOOKAPI_MESSAGE)){
 			HeapFree(rwHeap, 0, message);
 			continue; //Error
 		}
