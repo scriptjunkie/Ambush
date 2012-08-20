@@ -313,7 +313,7 @@ DWORD WINAPI CreateProcessInternalWHook(PVOID token, LPCWSTR lpApplicationName, 
 	size_t applen = (size_t)-1;
 	if(lpApplicationName != 0)
 		applen = lstrlenW(lpApplicationName);
-	if(retval == 0 || (dwCreationFlags  & (CREATE_PROTECTED_PROCESS)) != 0 || unknown != 0
+	if(retval == 0 || (dwCreationFlags  & (CREATE_PROTECTED_PROCESS)) != 0
 			//Or the process is blacklisted
 			|| (applen != (size_t)-1 && applen < INT_MAX && procBlacklist[0] != '\0' 
 				&& wslre_match(compiledSignatures[procBlacklist], lpApplicationName, (int)applen, NULL))){
@@ -331,7 +331,7 @@ DWORD WINAPI CreateProcessInternalWHook(PVOID token, LPCWSTR lpApplicationName, 
 	}
 
 	disableAlerts();
-	dll_inject_load(lpProcessInformation->hProcess); // Try msf-style cross-arch inject
+	dll_inject_load(lpProcessInformation->hProcess, lpProcessInformation->hThread); // Try msf-style cross-arch inject
 	if(!alreadySuspended)
 		ResumeThread(lpProcessInformation->hThread);
 	enableAlerts();

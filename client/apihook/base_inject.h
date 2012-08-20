@@ -90,13 +90,13 @@ typedef struct _WOW64CONTEXT
 
 //===============================================================================================//
 
-DWORD inject_via_apcthread(HANDLE hProcess, DWORD dwProcessID, DWORD dwDestinationArch, LPVOID lpStartAddress );
+DWORD inject_via_apcthread(HANDLE hProcess, HANDLE hThread, DWORD dwProcessID, DWORD dwDestinationArch, LPVOID lpStartAddress );
 
 DWORD inject_via_remotethread(HANDLE hProcess, DWORD dwDestinationArch, LPVOID lpStartAddress );
 
-BOOL inject_dll( HANDLE hProcess, DWORD pidArch, LPVOID lpBuffer, DWORD dwLength );
+BOOL inject_dll( HANDLE hProcess, HANDLE hThread, DWORD pidArch, LPVOID lpBuffer, DWORD dwLength );
 
-DWORD dll_inject_load( HANDLE hProcess );
+DWORD dll_inject_load( HANDLE hProcess, HANDLE hThread );
 
 //===============================================================================================//
 #endif

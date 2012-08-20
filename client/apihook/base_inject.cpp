@@ -127,27 +127,15 @@ BYTE ldr_load_library_x64[] =	"\xfc\x48\x83\xe4\xf0\xe8\xc8\x00\x00\x00\x41\x51\
  * Attempt to gain code execution in the remote process via a call to ntdll!NtQueueApcThread
  * Note: Windows Server 2008R2 can blue screen if you use APC injection to inject into another sessions csrss.exe
  */
-DWORD inject_via_apcthread(HANDLE hProcess, DWORD dwDestinationArch, LPVOID lpStartAddress ){
-	DWORD dwResult                     = ERROR_ACCESS_DENIED;
-	HMODULE hNtdll                     = NULL;
-	NTQUEUEAPCTHREAD pNtQueueApcThread = NULL;
-	HANDLE hThreadSnap                 = NULL;
+bool inject_via_apcthread(HANDLE hProcess, HANDLE hThread, DWORD dwDestinationArch, LPVOID lpStartAddress ){
 	LPVOID lpApcStub                   = NULL;
 	LPVOID lpRemoteApcStub             = NULL;
 	LPVOID lpRemoteApcContext          = NULL;
-	const int MAX_THREADS = 64;
-	HANDLE threads[MAX_THREADS];
-	int numThreads = 0;
-	THREADENTRY32 t                    = {0};
 	APCCONTEXT ctx                     = {0};
 	DWORD dwApcStubLength              = 0;
-	DWORD dwProcessID                  = 0;
 	ctx.s.lpStartAddress = lpStartAddress;
 	ctx.p.lpParameter    = NULL;
 	ctx.bExecuted        = FALSE;
-
-	t.dwSize = sizeof( THREADENTRY32 );
-	dwProcessID = GetProcessId(hProcess);
 
 	// Get the architecture specific apc inject stub...
 	if( dwDestinationArch == PROCESS_ARCH_X86 ){
@@ -156,9 +144,9 @@ DWORD inject_via_apcthread(HANDLE hProcess, DWORD dwDestinationArch, LPVOID lpSt
 			// Our injected APC ends up running in native x64 mode within the wow64 process and as such 
 			// will need a modified stub to transition to wow64 before execuing the apc_stub_x86 stub.
 			// This issue does not effect x64->x86 injection using the kernel32!CreateRemoteThread method though.
-			
-			SetLastError( ERROR_ACCESS_DENIED );
-			return FALSE; //BREAK_ON_ERROR( "[INJECT] inject_via_apcthread: Can't do x64->x86 APC injection yet." )
+
+			//BREAK_ON_ERROR( "[INJECT] inject_via_apcthread: Can't do x64->x86 APC injection yet.");
+			return false;
 		}else{  // injecting x86->x86
 			lpApcStub       = &apc_stub_x86;
 			dwApcStubLength = sizeof( apc_stub_x86 );
@@ -215,98 +203,47 @@ DWORD inject_via_apcthread(HANDLE hProcess, DWORD dwDestinationArch, LPVOID lpSt
 			// TO-DO: parse the PE64 executable wow64.dll to get this at runtime.
 			lpRemoteAddress = VirtualAllocEx( hProcess, (LPVOID)0x6B0095F0, 8192, MEM_RESERVE|MEM_COMMIT, PAGE_EXECUTE_READWRITE );
 			if( !lpRemoteAddress )
-				return FALSE; //BREAK_ON_ERROR( "[INJECT] inject_via_apcthread: VirtualAllocEx 0x6B0095F0 failed" );
+				return false; //BREAK_ON_ERROR( "[INJECT] inject_via_apcthread: VirtualAllocEx 0x6B0095F0 failed" );
 			if( VirtualQueryEx( hProcess, lpRemoteAddress, &mbi, sizeof(MEMORY_BASIC_INFORMATION) ) == 0 )
-				return FALSE; //BREAK_ON_ERROR( "[INJECT] inject_via_apcthread: VirtualQueryEx failed" );
+				return false; //BREAK_ON_ERROR( "[INJECT] inject_via_apcthread: VirtualQueryEx failed" );
 			lpNopSled = (BYTE *)malloc( mbi.RegionSize );
 			if( !lpNopSled )
-				return FALSE; //BREAK_ON_ERROR( "[INJECT] inject_via_apcthread: malloc lpNopSled failed" );
+				return false; //BREAK_ON_ERROR( "[INJECT] inject_via_apcthread: malloc lpNopSled failed" );
 			memset( lpNopSled, 0x90, mbi.RegionSize );
 			if( !WriteProcessMemory( hProcess, lpRemoteAddress, lpNopSled, mbi.RegionSize, NULL ) )
-				return FALSE; //BREAK_ON_ERROR( "[INJECT] inject_via_apcthread: WriteProcessMemory lpNopSled failed" )
+				return false; //BREAK_ON_ERROR( "[INJECT] inject_via_apcthread: WriteProcessMemory lpNopSled failed" )
 			if( !WriteProcessMemory( hProcess, ((BYTE*)lpRemoteAddress + mbi.RegionSize - sizeof(bStub)), bStub, sizeof(bStub), NULL ) )
-				return FALSE; //BREAK_ON_ERROR( "[INJECT] inject_via_apcthread: WriteProcessMemory bStub failed" )
+				return false; //BREAK_ON_ERROR( "[INJECT] inject_via_apcthread: WriteProcessMemory bStub failed" )
 			free( lpNopSled );
 		}
 	}else{
-		SetLastError( ERROR_BAD_ENVIRONMENT );
-		return FALSE; //BREAK_ON_ERROR( "[INJECT] inject_via_apcthread: Invalid target architecture" )
+		return false; //BREAK_ON_ERROR( "[INJECT] inject_via_apcthread: Invalid target architecture" );
 	}
 
-	hNtdll = LoadLibraryA( "ntdll" );
+	HMODULE hNtdll = GetModuleHandleA( "ntdll" );
 	if( !hNtdll )
-		return FALSE; //BREAK_ON_ERROR( "[INJECT] inject_via_apcthread: LoadLibraryA failed" )
-	pNtQueueApcThread = (NTQUEUEAPCTHREAD)GetProcAddress( hNtdll, "NtQueueApcThread" );
+		return false; //BREAK_ON_ERROR( "[INJECT] inject_via_apcthread: GetModuleHandleA failed" );
+	NTQUEUEAPCTHREAD pNtQueueApcThread = (NTQUEUEAPCTHREAD)GetProcAddress( hNtdll, "NtQueueApcThread" );
 	if( !pNtQueueApcThread )
-		return FALSE; //BREAK_ON_ERROR( "[INJECT] inject_via_apcthread: GetProcAddress NtQueueApcThread failed" )
-	hThreadSnap = CreateToolhelp32Snapshot( TH32CS_SNAPTHREAD, 0 );
-	if( !hThreadSnap )
-		return FALSE; //BREAK_ON_ERROR( "[INJECT] inject_via_apcthread: CreateToolhelp32Snapshot failed" )
-	if( !Thread32First( hThreadSnap, &t ) )
-		return FALSE; //BREAK_ON_ERROR( "[INJECT] inject_via_apcthread: Thread32First failed" )
+		return false; //BREAK_ON_ERROR( "[INJECT] inject_via_apcthread: GetProcAddress NtQueueApcThread failed" )
 	// Allocate memory for the apc stub and context
 	lpRemoteApcStub = VirtualAllocEx( hProcess, NULL, dwApcStubLength + sizeof(APCCONTEXT), MEM_RESERVE|MEM_COMMIT, PAGE_EXECUTE_READWRITE );
 	if( !lpRemoteApcStub )
-		return FALSE; //BREAK_ON_ERROR( "[INJECT] inject_via_apcthread: VirtualAllocEx failed" )
+		return false; //BREAK_ON_ERROR( "[INJECT] inject_via_apcthread: VirtualAllocEx failed" )
 	// Simply determine the apc context address
 	lpRemoteApcContext = ( (BYTE *)lpRemoteApcStub + dwApcStubLength );
 	//dprintf( "[INJECT] -- arch=%s, lpRemoteApcStub=0x%08X, lpRemoteApcContext=0x%08X", ( arch == 2 ? "x64" : "x86" ), lpRemoteApcStub, lpRemoteApcContext );
 	// Write the apc stub to memory...
 	if( !WriteProcessMemory( hProcess, lpRemoteApcStub, lpApcStub, dwApcStubLength, NULL ) )
-		return FALSE; //BREAK_ON_ERROR( "[INJECT] inject_via_apcthread: WriteProcessMemory lpRemoteApcStub failed" )
+		return false; //BREAK_ON_ERROR( "[INJECT] inject_via_apcthread: WriteProcessMemory lpRemoteApcStub failed" )
 	// Write the apc context to memory...
 	if( !WriteProcessMemory( hProcess, lpRemoteApcContext, (LPCVOID)&ctx, sizeof(APCCONTEXT), NULL ) )
-		return FALSE; //BREAK_ON_ERROR( "[INJECT] inject_via_apcthread: WriteProcessMemory lpRemoteApcContext failed" )
+		return false; //BREAK_ON_ERROR( "[INJECT] inject_via_apcthread: WriteProcessMemory lpRemoteApcContext failed" )
 
-	do{
-		HANDLE hThread = NULL;
-
-		// Only proceed if we are targeting a thread in the target process
-		if( t.th32OwnerProcessID != dwProcessID )
-			continue;
-
-		// Open a handle to this thread so we can do the apc injection
-		hThread = OpenThread( THREAD_ALL_ACCESS, FALSE, t.th32ThreadID );
-		if( !hThread )
-			continue;
-
-		//dprintf("[INJECT] inject_via_apcthread: Trying to inject into thread %d", t.th32ThreadID );
-
-		// Only inject into threads we can suspend to avoid synchronization issue whereby the new metsrv will attempt 
-		// an ssl connection back but the client side will not be ready to accept it and we loose the session.
-		if( SuspendThread( hThread ) != (DWORD)-1 ){
-			threads[numThreads] = hThread;
-			numThreads++;
-
-			// Queue up our apc stub to run in the target thread, when our apc stub is run (when the target 
-			// thread is placed in an alertable state) it will spawn a new thread with our actual payload.
-			// Any successfull call to NtQueueApcThread will make inject_via_apcthread return ERROR_SUCCESS.
-			if( pNtQueueApcThread( hThread, lpRemoteApcStub, lpRemoteApcContext, 0, 0 ) == ERROR_SUCCESS ){
-				//dprintf("[INJECT] inject_via_apcthread: pNtQueueApcThread for thread %d Succeeded.", t.th32ThreadID );
-				dwResult = ERROR_SUCCESS;
-			}else{
-				//dprintf("[INJECT] inject_via_apcthread: pNtQueueApcThread for thread %d Failed.", t.th32ThreadID );
-			}
-			if(numThreads == MAX_THREADS)
-				break;
-		}else{
-			CloseHandle( hThread );
-		}
-		
-		// keep searching for more target threads to inject our apc stub into...
-	} while( Thread32Next( hThreadSnap, &t ) );
-
-	for(int i = 0; i < numThreads; i++){
-		ResumeThread( threads[i] );
-		CloseHandle( threads[i] );
-	}
-
-	if( hThreadSnap )
-		CloseHandle( hThreadSnap );
-	if( hNtdll )
-		FreeLibrary( hNtdll );
-	SetLastError( dwResult );
-	return dwResult;
+	// Queue up our apc stub to run in the target thread, when our apc stub is run (when the target 
+	// thread is placed in an alertable state) it will spawn a new thread with our actual payload.
+	// Any successfull call to NtQueueApcThread will make inject_via_apcthread return ERROR_SUCCESS.
+	return pNtQueueApcThread( hThread, lpRemoteApcStub, lpRemoteApcContext, 0, 0 ) == ERROR_SUCCESS;
 }
 
 /*
@@ -317,7 +254,6 @@ DWORD inject_via_apcthread(HANDLE hProcess, DWORD dwDestinationArch, LPVOID lpSt
  *       Windows 2003 from this method of injection, however the APC injection method will work on 2003.
  */
 DWORD inject_via_remotethread_wow64( HANDLE hProcess, LPVOID lpStartAddress, HANDLE * pThread ){
-	DWORD dwResult           = ERROR_SUCCESS;
 	EXECUTEX64 pExecuteX64   = NULL;
 	X64FUNCTION pX64function = NULL;
 	WOW64CONTEXT * ctx       = NULL;
@@ -363,26 +299,24 @@ DWORD inject_via_remotethread_wow64( HANDLE hProcess, LPVOID lpStartAddress, HAN
 	// The native function will use the native Win64 API's to create a remote thread in the target process.
 	if( !pExecuteX64( pX64function, (DWORD)ctx ) ){
 		SetLastError( ERROR_ACCESS_DENIED );
-		return FALSE; //BREAK_ON_ERROR( "[INJECT] inject_via_remotethread_wow64: pExecuteX64( pX64function, ctx ) failed" )
+		return false; //BREAK_ON_ERROR( "[INJECT] inject_via_remotethread_wow64: pExecuteX64( pX64function, ctx ) failed" )
 	}
 
 	if( !ctx->t.hThread ){
 		SetLastError( ERROR_INVALID_HANDLE );
-		return FALSE; //BREAK_ON_ERROR( "[INJECT] inject_via_remotethread_wow64: ctx->t.hThread is NULL" )
+		return false; 
 	}
 
 	// Success! grab the new thread handle from of the context
 	*pThread = ctx->t.hThread;
 
-	//dprintf( "[INJECT] inject_via_remotethread_wow64: Success, hThread=0x%08X", ctx->t.hThread );
-
 	if( pExecuteX64 )
-		VirtualFree( pExecuteX64, 0, MEM_DECOMMIT );
+		VirtualFree(pExecuteX64, 0, MEM_DECOMMIT);
 
 	if( pX64function )
-		VirtualFree( pX64function, 0, MEM_DECOMMIT );
+		VirtualFree(pX64function, 0, MEM_DECOMMIT);
 
-	return dwResult;
+	return true;
 }
 
 // Attempte to gain code execution in the remote process by creating a remote thread in the target process.
@@ -417,7 +351,7 @@ DWORD inject_via_remotethread(HANDLE hProcess, DWORD dwDestinationArch, LPVOID l
  * Note: You must inject a DLL loader of the correct target process architecture. The wrapper function 
  *       dll_inject_load() will handle this automatically.
  */
-BOOL inject_dll( HANDLE hProcess, DWORD pidArch, LPVOID lpBuffer, DWORD dwLength ){
+BOOL inject_dll( HANDLE hProcess, HANDLE hThread, DWORD pidArch, LPVOID lpBuffer, DWORD dwLength ){
 	if( !lpBuffer || !dwLength || !hProcess )
 		return FALSE; //BREAK_WITH_ERROR( "[INJECT] inject_dll.  No Dll buffer supplied.", ERROR_INVALID_PARAMETER );
 
@@ -425,9 +359,9 @@ BOOL inject_dll( HANDLE hProcess, DWORD pidArch, LPVOID lpBuffer, DWORD dwLength
 	LPVOID lpRemoteLibraryBuffer = VirtualAllocEx( hProcess, NULL, dwLength, MEM_RESERVE|MEM_COMMIT, PAGE_EXECUTE_READWRITE ); 
 	return lpRemoteLibraryBuffer != NULL
 			&& WriteProcessMemory( hProcess, lpRemoteLibraryBuffer, lpBuffer, dwLength, NULL )
-			&& (inject_via_remotethread( hProcess, pidArch, lpRemoteLibraryBuffer ) == ERROR_SUCCESS
+			&& (inject_via_remotethread(hProcess, pidArch, lpRemoteLibraryBuffer) == ERROR_SUCCESS
 			// If that fails we can try to inject via a queued APC in the target process
-				|| inject_via_apcthread( hProcess, pidArch, lpRemoteLibraryBuffer ) == ERROR_SUCCESS);
+				|| inject_via_apcthread(hProcess, hThread, pidArch, lpRemoteLibraryBuffer) );
 }
 
 // Get the native architecture of the system we are running on.
@@ -525,7 +459,7 @@ BOOL injectPrep(){
 	memcpy(loadDllx64Code + x64scodeLen + 8, dll64Path, x64strByteLen);
 	return TRUE;
 }
-DWORD dll_inject_load( HANDLE hProcess ){
+DWORD dll_inject_load( HANDLE hProcess, HANDLE hThread ){
 	DWORD dwResult     = ERROR_ACCESS_DENIED;
 	DWORD dwPidArch    = PROCESS_ARCH_UNKNOWN;
 	LPVOID lpDllBuffer = NULL;
@@ -548,7 +482,7 @@ DWORD dll_inject_load( HANDLE hProcess ){
 			reportError(L"Could not determine proc arch");
 			return dwResult;
 		}
-		dwResult = inject_dll( hProcess, dwPidArch, lpDllBuffer, dwDllLength );
+		dwResult = inject_dll( hProcess, hThread, dwPidArch, lpDllBuffer, dwDllLength );
 	}__except(exceptionFilter(GetExceptionInformation())){ //On exception - don't take action.
 	}
 	return dwResult;
