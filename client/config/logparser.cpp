@@ -10,16 +10,20 @@ void dumpLog(HANDLE inputHandle){
 	SYSTEMTIME systime;
 	FILETIME filetime;
 	DWORD read;
-	if(ReadFile(inputHandle, &filetime, sizeof(filetime), &read, NULL) == FALSE || read != sizeof(filetime))
+	if(ReadFile(inputHandle, &filetime, sizeof(filetime), &read, NULL) == FALSE || read != sizeof(filetime)){
+		cerr << "Invalid file - cannot read" << endl;
 		return;
+	}
 	if(FileTimeToSystemTime(&filetime, &systime))
 		wcout << systime.wYear << "-" << systime.wMonth << "-" << systime.wDay << " " << systime.wHour 
 		<< ":" << systime.wMinute << ":" << systime.wSecond << "." << systime.wMilliseconds; //get time
 
 	// Then get full message
 	HOOKAPI_MESSAGE message;
-	if(ReadFile(inputHandle, &message, sizeof(message), &read, NULL) == FALSE || read != sizeof(message))
+	if(ReadFile(inputHandle, &message, sizeof(message), &read, NULL) == FALSE || read != sizeof(message)){
+		cerr << "Invalid file - cannot read" << endl;
 		return;
+	}
 	PBYTE contents = new BYTE[message.length + 2];
 	memcpy(contents, &message, sizeof(message));
 	// if length > size - position it will overflow
@@ -28,8 +32,10 @@ void dumpLog(HANDLE inputHandle){
 		return;
 	}
 	if(ReadFile(inputHandle, contents + sizeof(message), message.length - sizeof(message), &read, NULL) == FALSE 
-			|| read != message.length - sizeof(message))
+			|| read != message.length - sizeof(message)){
+		cerr << "Invalid file - cannot read" << endl;
 		return;
+	}
 	wcout << " Type " << message.type << " pid " << message.pid << " count " << message.count << " numargs " << message.numArgs;
 
 	//Handle string messages (error/start)

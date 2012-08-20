@@ -26,7 +26,11 @@ DWORD length = 4, length32 = sizeof(appinitDlls32), length64 = sizeof(appinitDll
 BOOL is64bit = TRUE;
 //Exits with error message
 void die(const char * message){
-	cerr << message << GetLastError() << endl;
+	DWORD lasterr = GetLastError();
+	if(lasterr != 0)
+		cerr << message << lasterr << endl;	
+	else
+		cerr << message << endl;
 	Sleep(1000);
 	exit(1);
 }
@@ -211,7 +215,9 @@ void doUpdate(){
 	RegOpenKeyExA(HKEY_LOCAL_MACHINE, "SOFTWARE\\Scriptjunkie\\Ambush", 0, KEY_QUERY_VALUE|KEY_WOW64_64KEY, &settingsKey);
 	//Get server name/IP
 	if(RegQueryValueExA(settingsKey, "SignatureServer", NULL, NULL, (PBYTE)serverc, &length) != ERROR_SUCCESS){
-		cerr << "Could not find signature server " << GetLastError() << endl;
+		DWORD err = GetLastError();
+		cerr << "Could not find signature server - error " << err << endl
+			<< "Need to set your server and signature set, i.e. \"config server 1.2.3.4 1\"" << endl;
 		return;
 	}
 	mbstowcs_s(&len, server, serverc, strlen(serverc));
@@ -318,9 +324,17 @@ void doUpdate(){
 	if (hConnect) WinHttpCloseHandle(hConnect);
 	if (hSession) WinHttpCloseHandle(hSession);
 }
+//returns whether string is composed of digits
+bool isInteger(char *str){
+	for(size_t i = 0; str[i] != 0; i++)
+		if(!isdigit(str[i]))
+			return false;
+	return true;
+}
 int main(int argc, char** argv){
 	if(argc < 2)
-		die("Api Hook config\nUsage: config [install|uninstall|update|server servername sigsetnum]");
+		die("Api Hook config\n"
+		"Usage: config [install|uninstall|update|server servername sigsetnum|dumplog logfilename]");
 
 	//Get command
 	string command(argv[1]);
@@ -430,7 +444,9 @@ int main(int argc, char** argv){
 			die("Error scheduling update task.");
 		}
 
-	}else if(command.compare("server") == 0 && argc == 4){
+	}else if(command.compare("server") == 0){
+		if(argc != 4 || !isInteger(argv[3]))
+			die("Must specify server name and signature set number\nconfig server servername sigsetnum");
 		HKEY settingsKey;
 		RegCreateKeyExA(HKEY_LOCAL_MACHINE, "SOFTWARE\\Scriptjunkie\\Ambush", 0, NULL, 0, 
 			KEY_SET_VALUE|KEY_WOW64_64KEY, NULL, &settingsKey, NULL);
@@ -449,9 +465,13 @@ int main(int argc, char** argv){
 		removeReg();
 		clearSchedTask();
 	}else if(command.compare("update") == 0){
+		if(argc != 2)
+			die("Too many arguments");
 		doUpdate();
 		return 0;
 	}else if(command.compare("dumplog") == 0){
+		if(argc != 3)
+			die("Must specify a single log file to dump");
 		dumpLog(CreateFileA(argv[2], GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,NULL,OPEN_EXISTING,0,NULL));
 	}else{
 		die("Unknown command");
