@@ -42,9 +42,13 @@ Then go to http://localhost:3000/
 Follow instructions to enter a user/pass for the admin
 Add a signature set and configure signatures
 Run C:\Sites\Ambush\client\Release\installer.msi and install for all users
-Run 
+Run:
 "C:\Program Files (x86)\Scriptjunkie Software\Ambush\config.exe" server localhost 1
-Where 1 is the number of your signature set. (drop the " (x86)" if on a 32 bit system)
+
+Where 1 is the number of your signature set. (drop the " (x86)" if on a 32 bit system) then run:
+"C:\Program Files (x86)\Scriptjunkie Software\Ambush\config.exe" update
+
+And you are all set up!
 
 ###################################
 The hard way with a manual VM setup
