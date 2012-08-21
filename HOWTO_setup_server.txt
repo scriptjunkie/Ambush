@@ -15,9 +15,36 @@ wget http://www.ambuships.com/files/installbitnami.sh
 sudo bash installbitnami.sh
 
 Go to the webpage at http://your.vm.ip:3000/ enter admin credentials and log in. 
-You can then create a signature set and add signatures, and setup your clients.
+You can then create a signature set and add signatures, and setup your clients; see HOWTO_setup_clients.txt
 
 
+############################
+Standalone - Windows
+############################
+Download and install OpenSSL from http://slproweb.com/products/Win32OpenSSL.html
+The light installer will work fine; use the "Copy OpenSSL DLLs to:" "The Windows system directory" option.
+Important! Add C:\OpenSSL-Win32\bin\ to your system path. Run sysdm.cpl then go to Advanced->Environment Variables. Under System Variables, select Path then click Edit. Add C:\OpenSSL-Win32\bin\
+Download and install the latest rails installer from http://railsinstaller.org/ including git
+(not the ruby 1.8.x)
+Open the railsinstaller command prompt with ruby and rails and change to the C:\sites directory and run these commands:
+git clone https://github.com/scriptjunkie/Ambush.git
+cd Ambush\server
+
+since this is a local development setup using sqlite3, you will need to add sqlite3 to your gemfile:
+echo gem "sqlite3", ">= 1.3.1" >> Gemfile
+bundle install
+rake db:setup
+
+Then you can start the server:
+rails server
+You may want to configure this to run on each boot.
+Then go to http://localhost:3000/ 
+Follow instructions to enter a user/pass for the admin
+Add a signature set and configure signatures
+Run C:\Sites\Ambush\client\Release\installer.msi and install for all users
+Run 
+"C:\Program Files (x86)\Scriptjunkie Software\Ambush\config.exe" server localhost 1
+Where 1 is the number of your signature set. (drop the " (x86)" if on a 32 bit system)
 
 ###################################
 The hard way with a manual VM setup
@@ -54,7 +81,7 @@ crontab -u root schedtemp
 
 
 ######################################################
-The hard way with a local development setup with JRuby
+A local development setup with JRuby
 ######################################################
 
 # Other configurations with ruby 1.9 should also be possible.
