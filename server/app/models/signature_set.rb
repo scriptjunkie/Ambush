@@ -126,7 +126,7 @@ class SignatureSet < ActiveRecord::Base
 
 	def self.sign(data)
 		genkeys if not File.file? self.privpath
-		proc = IO.popen('openssl dgst -sha1 -sign "' + self.privpath + '"','w+')
+		proc = IO.popen('openssl dgst -sha1 -sign "' + self.privpath + '"','wb+')
 		proc.write(data)
 		proc.close_write
 		dgst = proc.read
