@@ -21,6 +21,7 @@ You can then create a signature set and add signatures, and setup your clients; 
 ############################
 Standalone - Windows
 ############################
+If you do not have the Visual C++ 2008 Redistributable Package, install from http://www.microsoft.com/en-us/download/confirmation.aspx?id=29
 Download and install OpenSSL from http://slproweb.com/products/Win32OpenSSL.html
 The light installer will work fine; use the "Copy OpenSSL DLLs to:" "The Windows system directory" option.
 Important! Add C:\OpenSSL-Win32\bin\ to your system path. Run sysdm.cpl then go to Advanced->Environment Variables. Under System Variables, select Path then click Edit. Add C:\OpenSSL-Win32\bin\
@@ -35,9 +36,21 @@ echo gem "sqlite3", ">= 1.3.1" >> Gemfile
 bundle install
 rake db:setup
 
-Then you can start the server:
-rails server
-You may want to configure this to run on each boot.
+You could start Ambush now with "rails server" and begin creating signatures.
+But, if you want Ambush to keep working on reboot, you need to install it as a service.
+Download https://github.com/downloads/luislavena/service_wrapper/service_wrapper-0.1.1-win32.zip
+Extract service_wrapper.exe from the bin directory in the zip file to C:\Sites\
+and create a conf file C:\Sites\service_wrapper.conf containing the following five lines:
+[service]
+executable = C:\RailsInstaller\Ruby1.9.3\bin\ruby.exe
+arguments = C:\Sites\Ambush\server\script\rails s
+directory = C:\Sites\Ambush\
+logfile = C:\Sites\Ambush\log\service_wrapper.log
+
+Then run these commands as administrator to create and run the project:
+sc create railsapp binPath= "C:\Sites\service_wrapper.exe C:\Sites\service_wrapper.conf" start= auto
+sc start railsapp
+
 Then go to http://localhost:3000/ 
 Follow instructions to enter a user/pass for the admin
 Add a signature set and configure signatures
