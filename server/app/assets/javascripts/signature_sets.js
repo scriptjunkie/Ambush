@@ -231,7 +231,7 @@ function editAction(){
 	window.existing_sig_id = getCheckedSigs()[0];
 	$('#modalTitle').html('Edit signature');
 	//Display the overlay
-	$('#new').overlay({load:true, fixed: false}).load();
+	showNew();
 	fixHeight();
 	$.getJSON('/actions/'+getCheckedSigs()[0]+'.json',function(data){
 		for(key in data.action){
@@ -267,7 +267,7 @@ function fixHeight(){//Fix the height of the notes pane
 }
 function newAction(){
 	$('#modalTitle').html('New signature');
-	$('#new').overlay({load:true, fixed: false}).load();
+	showNew();
 	fixHeight();
 	window.existing_sig_id = -1; //we're not editing
 }
@@ -276,7 +276,7 @@ function closeOverlay(name){
 		name = '#new';
 	$(name).overlay().close();
 }
-function newSigSet(){
+function showNew(){
 	$('#new').overlay({load:true, fixed: false}).load();
 }
 function submitNewSig(){
@@ -313,9 +313,14 @@ function showLists(type){
 	$('#whitelistarea').val($('[name="act['+listType+'whitelist]"]').val());
 	$('#lists').fadeIn(1000);
 }
+function closeLists(){
+	$('#lists').fadeOut(500);
+	if(document.all)
+		showNew();
+}
 function applyLists(){
 	$('[name="act['+listType+'blacklist]"]').val($('#blacklistarea').val());
 	$('[name="act['+listType+'whitelist]"]').val($('#whitelistarea').val());
 	$('#'+listType+'blacklist').text($('#whitelistarea').val()+" - "+$('#blacklistarea').val());
-	$('#lists').fadeOut(1000);
+	closeLists();
 }

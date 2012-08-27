@@ -17,7 +17,7 @@ dlls = '<%= h(AvailableDll.all(:order => "name").map{|ad| ad.name}.join(',')) %>
 	<textarea id="whitelistarea" rows=5 class="list"></textarea>
 	<p class="dialog">
 		<button class="close" onclick="applyLists()"> Ok </button>
-		<button class="close" onclick="$('#lists').fadeOut(500)"> Cancel </button>
+		<button class="close" onclick="closeLists()"> Cancel </button>
 	</p>
 </div>
 
