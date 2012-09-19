@@ -303,17 +303,17 @@ typedef DWORD (WINAPI * CreateProcessInternalWFunc)( PVOID, LPCWSTR, LPWSTR, LPS
 	LPSECURITY_ATTRIBUTES, BOOL, DWORD, LPVOID,LPCWSTR,LPSTARTUPINFOW,LPPROCESS_INFORMATION,PVOID);
 CreateProcessInternalWFunc CreateProcessInternalWReal;
 DWORD WINAPI CreateProcessInternalWHook(PVOID token, LPCWSTR lpApplicationName, LPWSTR lpCommandLine, LPSECURITY_ATTRIBUTES lpProcessAttributes, LPSECURITY_ATTRIBUTES lpThreadAttributes,
-		BOOL bInheritHandles, DWORD dwCreationFlags, LPVOID lpEnvironment, LPCWSTR lpCurrentDirectory, LPSTARTUPINFOW lpStartupInfo, LPPROCESS_INFORMATION lpProcessInformation, PVOID unknown){
+		BOOL bInheritHandles, DWORD dwCreationFlags, LPVOID lpEnvironment, LPCWSTR lpCurrentDirectory, LPSTARTUPINFOW lpStartupInfo, LPPROCESS_INFORMATION lpProcessInformation, PVOID newToken){
 	bool alreadySuspended = (dwCreationFlags & CREATE_SUSPENDED) != 0;
 	DWORD retval = CreateProcessInternalWReal(token, lpApplicationName, lpCommandLine, lpProcessAttributes, lpThreadAttributes, 
-		bInheritHandles, dwCreationFlags | CREATE_SUSPENDED, lpEnvironment, lpCurrentDirectory, lpStartupInfo, lpProcessInformation, unknown);
+		bInheritHandles, dwCreationFlags | CREATE_SUSPENDED, lpEnvironment, lpCurrentDirectory, lpStartupInfo, lpProcessInformation, newToken);
 	DWORD originalLastError = GetLastError();
 
 	// If something weird or broken is happening, don't continue
 	size_t applen = (size_t)-1;
 	if(lpApplicationName != 0)
 		applen = lstrlenW(lpApplicationName);
-	if(retval == 0 || (dwCreationFlags  & (CREATE_PROTECTED_PROCESS)) != 0
+	if(retval == 0 || (dwCreationFlags  & (CREATE_PROTECTED_PROCESS)) != 0 || newToken != 0
 			//Or the process is blacklisted
 			|| (applen != (size_t)-1 && applen < INT_MAX && procBlacklist[0] != '\0' 
 				&& wslre_match(compiledSignatures[procBlacklist], lpApplicationName, (int)applen, NULL))){
@@ -323,8 +323,8 @@ DWORD WINAPI CreateProcessInternalWHook(PVOID token, LPCWSTR lpApplicationName, 
 		WCHAR errorinfo[300];
 		errorinfo[0] = 0;
 		StringCbPrintfExW(errorinfo, sizeof(errorinfo), NULL, NULL, STRSAFE_IGNORE_NULLS,
-				L"CreateProcessInternalWHook abort - retval %d creation flags %p token %p a2 %p appname %s cmdline %s",
-				retval, dwCreationFlags, token, unknown, lpApplicationName, lpCommandLine);
+				L"CreateProcessInternalWHook abort - retval %d creation flags %p token %p nt %p appname %s cmdline %s",
+				retval, dwCreationFlags, token, newToken, lpApplicationName, lpCommandLine);
 		reportError(errorinfo);
 		SetLastError(originalLastError);
 		return retval;
