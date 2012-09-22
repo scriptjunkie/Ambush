@@ -22,7 +22,7 @@
 		<tr><td>Export as YAML</td><td><a href="/signature_sets/<%= @signature_set.id %>/yaml">Download</a></td></tr>
 		<tr><td>Alert aggregator (syslog)</td><td><%= text_field :signature_set, :aggregator %></td></tr>
 		<tr><td>Aggregator port (default 514)</td><td><%= text_field :signature_set, :aggregator_port %></td></tr>
-		<tr><td>Process blacklist</td><td><%= text_area :signature_set, :procblacklist %></td></tr>
+		<tr><td>Process blacklist (<a href="../../documentation/regex" target="_blank" class="visible">regular expressions</a>) </td><td><%= text_area :signature_set, :procblacklist %></td></tr>
 	</tbody>
 	<tfoot><tr><td colspan="2">  </td></tr></tfoot>
 </table>

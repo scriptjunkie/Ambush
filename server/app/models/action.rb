@@ -93,15 +93,6 @@ class Action < ActiveRecord::Base
 		act.signature_set.markchanged
 	end
 
-	# turns a regex list from display format (multiline) to a lowercase regex
-	# also null pads to 4 byte alignment
-	def splitregex(str)
-		return "\x00\x00\x00\x00".encode('binary') if str == nil or str.chomp == ''
-		newstr = '(' + str.chomp.gsub(/\r\n/,'|').gsub(/\n/,'|') + ')'
-		newstr = newstr.downcase.encode("UTF-16LE").force_encoding('binary')
-		newstr = newstr + ("\x00" * (4 - (newstr.length % 4)))
-	end
-
 	def compiled
 		# action - required
 		raise 'Error - must define an action' if self.action == nil
@@ -115,11 +106,11 @@ class Action < ActiveRecord::Base
 		args = self.arguments.order('id')
 		raise 'Error - no args' if args.length == 0
 		# executable path black/white lists
-		exeblack = splitregex(self.procblacklist)
-		exewhite = splitregex(self.procwhitelist)
+		exeblack = ApplicationHelper.splitregex(self.procblacklist)
+		exewhite = ApplicationHelper.splitregex(self.procwhitelist)
 		# module black/white lists
-		modblack = splitregex(self.modblacklist)
-		modwhite = splitregex(self.modwhitelist)
+		modblack = ApplicationHelper.splitregex(self.modblacklist)
+		modwhite = ApplicationHelper.splitregex(self.modwhitelist)
 		# put together output
 		out = [self.id, self.action, self.severity, self.retval, self.actiontype, args.length,
 				exeblack.length, exewhite.length, modblack.length, modwhite.length].pack("VVVQVVVVVV")

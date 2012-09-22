@@ -98,15 +98,15 @@ function subtypeChange(i, arg){
 	}else if(val == "range"){
 		$('#restrictval'+i).html('<input name="val'+i+'" value="0" size=10></input>-<input name="subval'+i+'" value="0xFFFFFFFF" size=10></input>');
 	}else if(val == "RegExp"){
-		$('#restrictval'+i).html('<input name="val'+i+'" value="^.*RegExp$" size=20></input>');
+		$('#restrictval'+i).html('<input name="val'+i+'" value="^.*RegExp$" size=20></input> <a href=../documentation/regex target=_blank>?</a>');
 	}else if(val == "pointer"){
 		$('#restrictval'+i).html('<input name="val'+i+'" value="0" type="hidden"></input><input type="text" name="subval'+i+'" value="0x40" title="A memory protection constant, like PAGE_EXECUTE_READWRITE or a bitmask of possible memory protection values of the memory pointed to"></input>');
 		//Set up the tooltip
 		$("input[name=subval"+i+"]").tooltip({ position: "center right", effect: "fade", opacity: 0.8 });
 	}else if(val == "VAL"){
-		$('#restrictval'+i).html('<input name="val'+i+'" value="^\\x00\\xff*RegExp$" size=20></input> Size:<input name="blobval'+i+'" value="0" size=5></input>');
+		$('#restrictval'+i).html('<input name="val'+i+'" value="^\\x00\\xff*RegExp$" size=20></input> <a href=../documentation/regex target=_blank class=visible>?</a> Size:<input name="blobval'+i+'" value="0" size=5></input>');
 	}else if(val == "ARG"){
-		var html = '<input name="val'+i+'" value="^\\x00\\xff*RegExp$" size=20></input> Size arg:<select id="sels'+i+'" name="blobval'+i+'">';
+		var html = '<input name="val'+i+'" value="^\\x00\\xff*RegExp$" size=20></input> <a href=../documentation/regex target=_blank class=visible>?</a> Size arg:<select id="sels'+i+'" name="blobval'+i+'">';
 		for(j=0; j<=$('#typerow').children().length - 2; j++)
 			if(j != i)
 				html += '<option value="'+j+'">'+j+'</option>';

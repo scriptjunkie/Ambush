@@ -10,10 +10,10 @@ dlls = '<%= h(AvailableDll.all(:order => "name").map{|ad| ad.name}.join(',')) %>
 
 <div id="lists" class="modal">
 	<h2>Blacklist</h2>
-	<p class="dialog">List filenames or paths to exclude, one per line:</p>
+	<p class="dialog">List filenames or path <a href="../documentation/regex" target="_blank" class="visible">regex's</a> to exclude, one per line:</p>
 	<textarea id="blacklistarea" rows=5 class="list"></textarea>
 	<h2>Whitelist</h2>
-	<p class="dialog">List filenames or paths to include, or leave blank to include all others:</p>
+	<p class="dialog">List filenames or path <a href="../documentation/regex" target="_blank" class="visible">regex's</a> to include, or leave blank to include all others:</p>
 	<textarea id="whitelistarea" rows=5 class="list"></textarea>
 	<p class="dialog">
 		<button class="close" onclick="applyLists()"> Ok </button>

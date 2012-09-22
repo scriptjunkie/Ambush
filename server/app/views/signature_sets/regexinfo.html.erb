@@ -1,0 +1,50 @@
+
+<div class="content">
+	<div class="caption">Regular Expressions</div>
+	<div class="contenttext">
+	<p>All process and module blacklists and whitelists and string argument restrictions in Ambush are regular expressions. This means that with a single expression you can specify a wide variety of restrictions, but mistakes are easy to make.</p>
+	<h3>Use</h3>
+	<p><ul><li>Blacklists and whitelists have one regular expression per line. Ambush will combine each regular expression into the complete blacklist (or whitelist).</li>
+	<li>Blacklists and whitelists will be applied case-insensitively, but argument restrictions will be case-sensitive.</li>
+	<li>The regular expressions will match any portion of the string or path unless you start your regular expression with ^ to only match at the beginning or $ to only match at the end.</li>
+	</ul></p>
+	<h3>Examples</h3>
+	
+<table class="sortable" >
+	<thead><tr><th scope="col">Regular Expression</th><th scope="col">Matches</th><th scope="col">Does not match</th></tr></thead>
+	<tbody>
+		<tr><th>chrome.exe</th><td>C:\Users\Bob\Appdata\Local\Google\Chrome\Application\chrome.exe</td><td>C:\Temp\bhrome.exe</td></tr>
+		<tr><th></th><td>C:\Temp\chromezexe.txt</td><td></td></tr>
+		<tr><th></th><td>C:\Temp\zzzchrome.exe.bat</td><td></td></tr>
+		<tr><th>[abc]hrome\.exe</th><td>C:\Users\Bob\Appdata\Local\Google\Chrome\Application\chrome.exe</td><td>C:\Temp\chromezexe.txt</td></tr>
+		<tr><th></th><td>C:\Temp\zzzchrome.exe.bat</td><td></td></tr>
+		<tr><th></th><td>C:\Temp\bhrome.exe</td><td></td></tr>
+		<tr><th>\\chrome\.exe$</th><td>C:\Users\Bob\Appdata\Local\Google\Chrome\Application\chrome.exe</td><td>C:\Temp\chromezexe.txt</td></tr>
+		<tr><th></th><td></td><td>C:\Temp\zzzchrome.exe.bat</td></tr>
+		<tr><th>chrome\d\.exe</th><td>chrome1.exe</td><td>chromea.exe</td></tr>
+	</tbody>
+</table>
+	<h3>Syntax</h3>
+	<pre>      ^               Match beginning of a buffer
+      $               Match end of a buffer
+      ()              Grouping and substring capturing
+      [...]           Match any character from set
+      [^...]          Match any character but ones from set
+      \s              Match whitespace
+      \S              Match non-whitespace
+      \d              Match decimal digit
+      \r              Match carriage return
+      \n              Match newline
+      +               Match one or more times (greedy)
+      +?              Match one or more times (non-greedy)
+      *               Match zero or more times (greedy)
+      *?              Match zero or more times (non-greedy)
+      ?               Match zero or once
+      \xDD            Match byte with hex value 0xDD
+      \meta           Match one of the meta character: ^$().[*+?\
+      </pre>
+	</div>
+</div>
+<div class="content">
+<span class="right"><span class="button" onclick="window.close()">Ok</span></span>
+</div>

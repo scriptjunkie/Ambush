@@ -69,8 +69,7 @@ class SignatureSet < ActiveRecord::Base
 		self.serial = 1 if self.serial == nil
 		out = [@@signature_version, self.serial].pack('eV')
 		reserved = '' # not currently used
-		blist = self.procblacklist.to_s.encode("UTF-16LE").force_encoding('binary')
-		blist = blist + ("\x00" * (4 - (blist.length % 4)) )
+		blist = ApplicationHelper.splitregex(self.procblacklist.to_s) # handles regex formatting, encoding and padding
 
 		dlls = AvailableDll.find(:all,:joins => "INNER JOIN available_functions ON available_functions.available_dll_id = available_dlls.id INNER JOIN actions ON available_functions.id = actions.available_function_id",:select => 'DISTINCT(available_dlls.name),available_dlls.*')
 		numdlls = 0

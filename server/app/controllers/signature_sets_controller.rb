@@ -116,4 +116,11 @@ class SignatureSetsController < ApplicationController
 		@signature_set.destroy
 		respond_with({:message => 'Signature Set successfully destroyed!'}, :location => nil)
 	end
+
+	# GET /documentation/regex
+	def regexinfo
+		respond_to do |format|
+			format.html # regexinfo.html.erb
+		end
+	end
 end
