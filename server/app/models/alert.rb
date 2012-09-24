@@ -4,7 +4,7 @@ class Alert < ActiveRecord::Base
 	@@severities = {0 => 'none', 1000 => 'low', 2000 => 'medium', 3000 => 'high', 4000 => 'critical'}
 
 	def san(val)
-		ActionController::Base.helpers.sanitize(val).gsub("\\","\\<wbr>").gsub(",",",<wbr>")
+		ActionController::Base.helpers.sanitize(val).to_s.gsub("\\","\\<wbr>").gsub(",",",<wbr>")
 	end
 
 	def display
