@@ -14,7 +14,7 @@ Use these two commands to install Ambush:
 wget http://www.ambuships.com/files/installbitnami.sh
 sudo bash installbitnami.sh
 
-Go to the webpage at http://your.vm.ip:3000/ enter admin credentials and log in. 
+Go to the webpage at http://your.vm.ip:3000/ enter what you want your admin credentials to be, and then on the next screen, log in. 
 You can then create a signature set and add signatures, and setup your clients; see HOWTO_setup_clients.txt
 
 
