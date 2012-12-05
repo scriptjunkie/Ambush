@@ -386,6 +386,12 @@ int main(int argc, char** argv){
 		GetShortPathNameA(dllPath64.c_str(), shortDllPath64, sizeof(shortDllPath64));
 
 	if(command.compare("install") == 0 || command.compare("/Commit") == 0){ //INSTALL
+		//Don't allow install on unsupported Windows versions. XP, for example, could crash.
+		OSVERSIONINFOA ovi;
+		memset(&ovi,0,sizeof(ovi));
+		ovi.dwOSVersionInfoSize = sizeof(ovi);
+		if(!GetVersionExA(&ovi) || ovi.dwMajorVersion < 6)
+			die("Error! Ambush is only supported on Windows Vista and later.");
 		doUpdate();
 
 		//Save reg values
