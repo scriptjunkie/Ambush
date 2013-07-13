@@ -54,7 +54,7 @@ sc start railsapp
 Then go to http://localhost:3000/ 
 Follow instructions to enter a user/pass for the admin
 Add a signature set and configure signatures
-Run C:\Sites\Ambush\client\Release\installer.msi and install for all users
+Install C:\Sites\Ambush\client\Release\installer.msi
 Run:
 "C:\Program Files (x86)\Scriptjunkie Software\Ambush\config.exe" server localhost 1
 
