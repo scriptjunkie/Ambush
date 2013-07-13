@@ -1,6 +1,16 @@
 ---
 version: 1.01
+procblacklist: C:\\Users\\.*\\AppData\\Local\\Google\\Chrome\\Application\\chrome\.exe
 actions:
+- name: Break most shellcode - LoadLib
+  action: block
+  function: LoadLibraryA
+  dll: Kernel32.dll
+  arguments:
+  - type: ignore
+  retval: 0
+  severity: high
+  retprotectMode: PAGE_EXECUTE_READWRITE
 - name: WinExec
   action: alert
   function: WinExec
@@ -154,4 +164,3 @@ actions:
   - type: ignore
   - type: ignore
   severity: medium
-...

@@ -134,7 +134,7 @@ class SignatureSet < ActiveRecord::Base
 	end
 
 	def simplified
-		{'version' => @@signature_version, 'actions' => self.actions.map{|a| a.simplified} }
+		{'version' => @@signature_version, 'procblacklist' => self.procblacklist, 'actions' => self.actions.map{|a| a.simplified} }
 	end
 
 	def self.from_simplified(simple, setid)
@@ -143,6 +143,9 @@ class SignatureSet < ActiveRecord::Base
 			@signature_set = SignatureSet.find(setid)
 		else
 			@signature_set = SignatureSet.new()
+			if simple['procblacklist']
+				@signature_set.procblacklist = simple['procblacklist']
+			end
 			@signature_set.save
 		end
 		simple['actions'].each do |act|
