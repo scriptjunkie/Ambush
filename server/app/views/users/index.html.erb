@@ -1,0 +1,36 @@
+<% content_for :unwrapped do %>
+<div class="modal small" id="new" style="padding-bottom: 40px;">
+	<h2 id="modalTitle">New user</h2>
+	<form id="newform" onsubmit='return submitNewUser();'>
+		<p class="dialog" style="margin: 10px 60px 10px 10px;">Username <input id="username" name="user[username]" size="30" type="text" value="" title="The loginname of the user" /></p>
+		<p class="dialog" style="margin: 10px 60px 10px 10px;">Password <input id="password" name="user[password]" size="30" type="password" value="" title="The password of the user" /></p>
+		<span class="right"><input type="submit" value="Close" onclick="closeOverlay();return false;"></input>
+		<input type="submit" value="Submit"></input></span>
+	</form>
+</div>
+<div class="modal small" id="pass" style="padding-bottom: 40px;">
+	<h2 id="modalPassTitle">Change password</h2>
+	<form id="passform" onsubmit='return submitNewPass();'>
+		<input id="userid" name="user[id]" type="hidden" />
+		<p class="dialog" style="margin: 10px 60px 10px 10px;">Password <input id="newpassword" name="user[password]" size="30" type="password" value="" title="The password of the user" /></p>
+		<span class="right"><input type="submit" value="Close" onclick="closeOverlay('#pass');return false;"></input>
+		<input type="submit" value="Submit"></input></span>
+	</form>
+</div>
+<% end %>
+
+<div class="content">
+<table class="sortable" style="width: 100%">
+	<div class="caption">Users</div>
+	<thead><tr><th scope="col">Username</th><th scope="col">Actions</th><th scope="col"></th></tr></thead>
+	<tbody id="sigtbody">
+	<% @users.each do |user| %>
+		<tr><th id="<%= user.id %>_box"><a href="<%= url_for user %>"><%= user.username %></th><td><a onclick="changePassword(<%=user.id %>)">Change password</a></td><td><a onclick="deleteUser(<%=user.id %>)">Delete user</a></td></tr>			
+	<% end %>
+	</tbody>
+	<tfoot><tr><td colspan="4"></td></tr></tfoot>
+</table>
+</div>
+<div class="content">
+<span class="right"><span class="button" onclick="showNew()">New</span></span>
+</div>
