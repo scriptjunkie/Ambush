@@ -47,6 +47,16 @@ class SignatureSetsController < ApplicationController
 		end
 	end
 
+	# GET /signature_sets/1/regcmddm
+	def regcmd
+		@signature_set = SignatureSet.find(params[:id])
+		headers['Content-Disposition'] = "attachment; filename=\"ambush.cmd\""
+		respond_to do |format|
+			format.html { render	:layout => false, :content_type => 'text/plain' }
+			format.json { render json: @signature_set }
+		end
+	end
+
 	# GET /signature_sets/1
 	# GET /signature_sets/1.json
 	def show

@@ -301,6 +301,9 @@ function deleteSignatureSet(id){
 function getAdm(id){
 	document.location = '/signature_sets/'+id+'/adm?domain='+encodeURIComponent(document.domain);
 }
+function getRegcmd(id){
+	document.location = '/signature_sets/'+id+'/regcmd?domain='+encodeURIComponent(document.domain);
+}
 function importSigSet(id){
 	$('#import').overlay({load:true, fixed:false}).load();
 	if(id)

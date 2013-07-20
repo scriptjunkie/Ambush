@@ -18,11 +18,13 @@
 	<thead><tr><th scope="col">Field</th><th scope="col">Value</th></tr></thead>
 	<tbody>
 		<tr><td>Name</td><td><%= text_field :signature_set, :name %></td></tr>
-		<tr><td>ADM file</td><td><a onclick="getAdm(<%= @signature_set.id %>)">Download</a></td></tr>
 		<tr><td>Export as YAML</td><td><a href="/signature_sets/<%= @signature_set.id %>/yaml">Download</a></td></tr>
 		<tr><td>Alert aggregator (syslog)</td><td><%= text_field :signature_set, :aggregator %></td></tr>
 		<tr><td>Aggregator port (default 514)</td><td><%= text_field :signature_set, :aggregator_port %></td></tr>
 		<tr><td>Process blacklist (<a href="../../documentation/regex" target="_blank" class="visible">regular expressions</a>) </td><td><%= text_area :signature_set, :procblacklist %></td></tr>
+		<tr><td><strong>Client setup</strong></td><td>Clients need one of the below configuration options and <a class="visible" href="<%= root_url %>installer.msi">the msi installer</a>.</td></tr>
+		<tr><td>ADM file (group policy)</td><td><a class="visible" onclick="getAdm(<%= @signature_set.id %>)">Download</a></td></tr>
+		<tr><td>Batch file</td><td><a class="visible" onclick="getRegcmd(<%= @signature_set.id %>)">Download</a></td></tr>
 	</tbody>
 	<tfoot><tr><td colspan="2">  </td></tr></tfoot>
 </table>

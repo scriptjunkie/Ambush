@@ -6,6 +6,7 @@ Ambush::Application.routes.draw do
 
   get "dll/delete"
   match "signature_sets/:id/adm" => "signature_sets#adm"
+  match "signature_sets/:id/regcmd" => "signature_sets#regcmd"
   match "signature_sets/:id/compiled" => "signature_sets#compiled"
   match "signature_sets/:id/signature" => "signature_sets#signature"
   match "signature_sets/:id/yaml" => "signature_sets#yaml"
