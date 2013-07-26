@@ -4,4 +4,19 @@
 # If you change this key, all old signed cookies will become invalid!
 # Make sure the secret is at least 30 characters and all random,
 # no regular words or you'll be exposed to dictionary attacks.
-Ambush::Application.config.secret_token = 'd0507b21c596d5509f7d8e9237029dd6f2f190a66759d2a9d22bd2b4545269ee56c8c8e44b0227e5ada1c1e8bfb80fbb5506d605f284355fc9fc0d356713327b'
+
+require 'securerandom'
+
+secret_token_filename = File.join(File.dirname(__FILE__), 'secret_token')
+ambush_secret_token = SecureRandom.hex(15)
+begin
+    f=File.open(secret_token_filename,"r")
+    ambush_secret_token = f.read
+    f.close
+rescue
+    f=File.open(secret_token_filename,"w")
+    f.write(ambush_secret_token)
+    f.close
+end
+
+Ambush::Application.config.secret_token = ambush_secret_token
