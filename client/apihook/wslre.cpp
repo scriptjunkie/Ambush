@@ -50,7 +50,7 @@ emit(struct wslre *r, int code)
 static void
 store_char_in_data(struct wslre *r, int ch)
 {
-	if (r->data_size >= (int) sizeof(r->data))
+	if (r->data_size >= (int) sizeof(r->data) / sizeof(r->data[0]))
 		r->err_str = L"RE is too long (data overflow)";
 	else
 		r->data[r->data_size++] = ch;
@@ -136,7 +136,7 @@ static void
 relocate(struct wslre *r, int begin, int shift)
 {
 	emit(r, END);
-	memmove(r->code + begin + shift, r->code + begin, r->code_size - begin);
+	memmove(r->code + begin + shift, r->code + begin, (r->code_size - begin) * sizeof(r->code[0]));
 	r->code_size += shift;
 }
 
@@ -381,7 +381,7 @@ match(const struct wslre *r, int pc, const wchar_t *s, int len,
 			res = 0;
 			n = r->code[pc + 2];	/* String length */
 			if (n <= len - *ofs && !memcmp(s + *ofs, r->data +
-			    r->code[pc + 1], n)) {
+			    r->code[pc + 1], n*sizeof(r->data[0]))) {
 				(*ofs) += n;
 				res = 1;
 			}
