@@ -48,8 +48,10 @@
 				EnableIntrinsicFunctions="true"
 				OmitFramePointers="true"
 				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL;APIHOOK_EXPORTS"
-				BufferSecurityCheck="false"
+				StringPooling="true"
 				EnableFunctionLevelLinking="true"
+				EnableEnhancedInstructionSet="1"
+				RuntimeTypeInfo="false"
 				UsePrecompiledHeader="0"
 				WarningLevel="4"
 				DebugInformationFormat="3"
@@ -117,6 +119,12 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
+				Optimization="2"
+				EnableIntrinsicFunctions="true"
+				OmitFramePointers="true"
+				StringPooling="true"
+				EnableFunctionLevelLinking="true"
+				RuntimeTypeInfo="false"
 				WarningLevel="4"
 				DebugInformationFormat="3"
 			/>
