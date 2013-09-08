@@ -119,9 +119,6 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				Optimization="2"
-				EnableIntrinsicFunctions="true"
-				OmitFramePointers="true"
 				StringPooling="true"
 				EnableFunctionLevelLinking="true"
 				RuntimeTypeInfo="false"
